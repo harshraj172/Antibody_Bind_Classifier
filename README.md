@@ -1,4 +1,4 @@
-# Bind_Classifer
+# Bind_Classifier
 
 ## AGENDA 01:
 AIM : To classify the Binding Energy of an Antibody with an Antigen
