@@ -23,7 +23,7 @@ from glob_utils import *
 def to_np(x):
     return x.cpu().detach().numpy()
 
-def train_epoch(epoch, model, seq_emb, loss_fnc, dataloader, optimizer, scheduler, FLAGS):
+def train_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, optimizer, scheduler, FLAGS):
     model.train()
   
     num_iters = len(dataloader)
@@ -41,67 +41,75 @@ def train_epoch(epoch, model, seq_emb, loss_fnc, dataloader, optimizer, schedule
 
         # run model forward and compute loss
         pred = model(gAB, hAB, gAG, hAG)
-        l1_loss, __, rescale_loss = loss_fnc(pred, y)
+        l1_loss, __ = loss_fnc(pred, y, criterion)
 
         # backprop
         l1_loss.backward()
         optimizer.step()
 
         if i % FLAGS.print_interval == 0:
-            print(f"[{epoch}|{i}] l1 loss: {l1_loss:.5f} rescale loss: {rescale_loss:.5f} [units]")
+            print(f"[{epoch}|{i}] L1 Loss: {l1_loss:.5f}")
         if FLAGS.use_wandb:
             if i % FLAGS.log_interval == 0:
-                wandb.log({"Train L1 loss": to_np(l1_loss), 
-                        "Rescale loss": to_np(rescale_loss)})
+                wandb.log({"Train L1 loss": to_np(l1_loss)})
 
         if FLAGS.profile and i == 10:
             sys.exit()
 
         scheduler.step(epoch + i / num_iters)
 
-def val_epoch(epoch, model, loss_fnc, dataloader, FLAGS):
+def val_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
     model.eval()
 
     rloss = 0
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
+        hAB, hAG = torch.tensor([0]), torch.tensor([0])
+        if FLAGS.use_seq:
+            hAB, hAG = seq_emb.pretrained_emb(seqAB), seq_emb.pretrained_emb(seqAG)
+        hAB = hAB.to(FLAGS.device)
+        hAG = hAG.to(FLAGS.device)
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
         y = y.to(FLAGS.device)
 
         # run model forward and compute loss
-        pred = model(gAB, gAG).detach()
-        __, __, rl = loss_fnc(pred, y, use_mean=False)
-        rloss += rl
+        pred = model(gAB, hAB, gAG, hAG).detach()
+        l1_loss, __ = loss_fnc(pred, y, criterion, use_mean=False)
+        rloss += l1loss
         
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
         Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
     rloss /= FLAGS.val_size
-    results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
-    print(f"...[{epoch}|val] rescale loss: {rloss:.5f} [units]")
-    print(results_df)
+    print(f"...[{epoch}|val] L1 Loss: {rloss:.5f} [units]")
     if FLAGS.use_wandb:
-        wandb.log({"val_precision": result_df['Precision'][0],
+        wandb.log({"val L1 loss": to_np(rloss),
+                   "val_precision": result_df['Precision'][0],
                    "val_recall": result_df['Recall'][0], 
                    "val_F1_score": result_df['F1 Score'][0], 
                    "val_L1_loss": to_np(rloss)})
 
-def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS):
+def test_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
     model.eval()
 
     rloss = 0
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
+        hAB, hAG = torch.tensor([0]), torch.tensor([0])
+        if FLAGS.use_seq:
+            hAB, hAG = seq_emb.pretrained_emb(seqAB), seq_emb.pretrained_emb(seqAG)
+        hAB = hAB.to(FLAGS.device)
+        hAG = hAG.to(FLAGS.device)
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
         y = y.to(FLAGS.device)
 
         # run model forward and compute loss
-        pred = model(gAB, gAG).detach()
-        __, __, rl = loss_fnc(pred, y, use_mean=False)
-        rloss += rl
+        pred = model(gAB, hAB, gAG, hAG).detach()
+        l1_loss, __ = loss_fnc(pred, y, criterion, use_mean=False)
+        rloss += l1_loss
         
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
@@ -109,10 +117,11 @@ def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS):
     rloss /= FLAGS.test_size
     results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
-    print(f"...[{epoch}|test] rescale loss: {rloss:.5f} [units]")
+    print(f"...[{epoch}|test] L1 Loss: {rloss:.5f} [units]")
     print(results_df)
     if FLAGS.use_wandb:
-        wandb.log({"test_precision": result_df['Precision'][0],
+        wandb.log({"test L1 loss": to_np(rloss),
+                   "test_precision": result_df['Precision'][0],
                    "test_recall": result_df['Recall'][0], 
                    "test_F1_Score": result_df['F1 Score'][0], 
                    "test_L1_loss": to_np(rloss)})
@@ -137,26 +146,28 @@ def main(FLAGS, UNPARSED_ARGV):
                               collate_fn=collate, 
                               num_workers=FLAGS.num_workers)
 
-    val_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
-    val_loader = DataLoader(val_dataset, 
-                            batch_size=FLAGS.batch_size, 
-                            shuffle=False, 
-                            collate_fn=collate, 
-                            num_workers=FLAGS.num_workers)
+#     val_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
+#     val_loader = DataLoader(val_dataset, 
+#                             batch_size=FLAGS.batch_size, 
+#                             shuffle=False, 
+#                             collate_fn=collate, 
+#                             num_workers=FLAGS.num_workers)
 
-    test_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
-    test_loader = DataLoader(test_dataset, 
-                             batch_size=FLAGS.batch_size, 
-                             shuffle=False, 
-                             collate_fn=collate, 
-                             num_workers=FLAGS.num_workers)
+#     test_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
+#     test_loader = DataLoader(test_dataset, 
+#                              batch_size=FLAGS.batch_size, 
+#                              shuffle=False, 
+#                              collate_fn=collate, 
+#                              num_workers=FLAGS.num_workers)
 
     FLAGS.train_size = len(train_dataset)
-    FLAGS.val_size = len(val_dataset)
-    FLAGS.test_size = len(test_dataset)
+    # FLAGS.val_size = len(val_dataset)
+    # FLAGS.test_size = len(test_dataset)
 
     # Choose model
-    seq_emb = models.get_SeqEmb(FLAGS.pretrained_lm_model)
+    seq_emb = 0
+    if FLAGS.use_seq:
+        seq_emb = models.get_SeqEmb(FLAGS.pretrained_lm_model)
     model = models.__dict__.get(FLAGS.model)(FLAGS.use_struct, 
                                              FLAGS.use_seq,
                                              FLAGS.num_layers, 
@@ -193,9 +204,9 @@ def main(FLAGS, UNPARSED_ARGV):
         torch.save(model.state_dict(), save_path)
         print(f"Saved: {save_path}")
 
-        train_epoch(epoch, model, seq_emb, task_loss, train_loader, optimizer, scheduler, FLAGS)
-        val_epoch(epoch, model, seq_emb, task_loss, val_loader, FLAGS)
-        test_epoch(epoch, model, seq_emb, task_loss, test_loader, FLAGS)
+        train_epoch(epoch, model, seq_emb, task_loss, criterion, train_loader, optimizer, scheduler, FLAGS)
+        # val_epoch(epoch, model, seq_emb, task_loss, criterion, val_loader, FLAGS)
+        # test_epoch(epoch, model, seq_emb, task_loss, criterion, test_loader, FLAGS)
 
         
 if __name__ == '__main__':
