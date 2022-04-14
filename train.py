@@ -76,14 +76,16 @@ def val_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
         # run model forward and compute loss
         pred = model(gAB, hAB, gAG, hAG).detach()
         l1_loss, __ = loss_fnc(pred, y, criterion, use_mean=False)
-        rloss += l1loss
+        rloss += l1_loss
         
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
         Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
     rloss /= FLAGS.val_size
+    results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
     print(f"...[{epoch}|val] L1 Loss: {rloss:.5f} [units]")
+    print(results_df)
     if FLAGS.use_wandb:
         wandb.log({"val L1 loss": to_np(rloss),
                    "val_precision": result_df['Precision'][0],
@@ -146,23 +148,23 @@ def main(FLAGS, UNPARSED_ARGV):
                               collate_fn=collate, 
                               num_workers=FLAGS.num_workers)
 
-#     val_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
-#     val_loader = DataLoader(val_dataset, 
-#                             batch_size=FLAGS.batch_size, 
-#                             shuffle=False, 
-#                             collate_fn=collate, 
-#                             num_workers=FLAGS.num_workers)
+    val_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
+    val_loader = DataLoader(val_dataset, 
+                            batch_size=FLAGS.batch_size, 
+                            shuffle=False, 
+                            collate_fn=collate, 
+                            num_workers=FLAGS.num_workers)
 
-#     test_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
-#     test_loader = DataLoader(test_dataset, 
-#                              batch_size=FLAGS.batch_size, 
-#                              shuffle=False, 
-#                              collate_fn=collate, 
-#                              num_workers=FLAGS.num_workers)
+    test_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
+    test_loader = DataLoader(test_dataset, 
+                             batch_size=FLAGS.batch_size, 
+                             shuffle=False, 
+                             collate_fn=collate, 
+                             num_workers=FLAGS.num_workers)
 
     FLAGS.train_size = len(train_dataset)
-    # FLAGS.val_size = len(val_dataset)
-    # FLAGS.test_size = len(test_dataset)
+    FLAGS.val_size = len(val_dataset)
+    FLAGS.test_size = len(test_dataset)
 
     # Choose model
     seq_emb = 0
@@ -205,8 +207,8 @@ def main(FLAGS, UNPARSED_ARGV):
         print(f"Saved: {save_path}")
 
         train_epoch(epoch, model, seq_emb, task_loss, criterion, train_loader, optimizer, scheduler, FLAGS)
-        # val_epoch(epoch, model, seq_emb, task_loss, criterion, val_loader, FLAGS)
-        # test_epoch(epoch, model, seq_emb, task_loss, criterion, test_loader, FLAGS)
+        val_epoch(epoch, model, seq_emb, task_loss, criterion, val_loader, FLAGS)
+        test_epoch(epoch, model, seq_emb, task_loss, criterion, test_loader, FLAGS)
 
         
 if __name__ == '__main__':
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     # Data
     parser.add_argument('--train_data_dir', type=str, default='data/SabDab/train',
             help="training data directory Antibodies")
-    parser.add_argument('--val_data_dir', type=str, default='data/SabDab/val',
+    parser.add_argument('--val_data_dir', type=str, default='data/SabDab/test',
             help="validation data directory Antibodies")
     parser.add_argument('--test_data_dir', type=str, default='data/SabDab/test',
             help="validation data directory Antibodies")
