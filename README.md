@@ -17,17 +17,17 @@ AIM : To classify the Binding Energy of an Antibody with an Antigen
 ### USAGE:
 Clone this repo using 
 
-`git clone https://github.com/harshraj172/Pretrain_ProtGNN.git`
+```git clone https://github.com/harshraj172/Pretrain_ProtGNN.git```
 
 Download requirements.txt using
 
-`pip install -r requirements.txt`
+```pip install -r requirements.txt```
 
 Clone Pretrain_ProtGNN using
 
-`git clone https://github.com/harshraj172/Pretrain_ProtGNN.git`
+```git clone https://github.com/harshraj172/Pretrain_ProtGNN.git```
 
 
 The train script offers many options; here are the most important ones
 
-`python train.py` 
+```python train.py```
