@@ -1,4 +1,5 @@
 import json
+import argparse
 import pandas as pd
 from prody import *
 
@@ -28,8 +29,9 @@ def save_json(X, path):
         
 def main():
     summary_df = pd.read_csv(FLAGS.summary_file_path, sep='\t')
-    summary_df = sabdab_df.dropna(subset=['Hchain', 'antigen_chain'])
-    summary_df = sabdab_df.reset_index(drop=True)
+    summary_df = summary_df.dropna(subset=['Hchain', 'antigen_chain'])
+    summary_df = summary_df.reset_index(drop=True)
+    save_freq = 300
 
     XAg, XAb = [], []
     for i in range(len(summary_df)):
@@ -41,39 +43,35 @@ def main():
         dict_Ag = get_data(pdb_id, Ag_chain)
 
         if dict_Ab['coords']['CA']!=[] and dict_Ag['coords']['CA']!=[]: 
-            XAb.append(get_data(pdb_id, Ab_chain))
-            XAg.append(get_data(pdb_id, Ag_chain))
+            XAb.append(dict_Ab)
+            XAg.append(dict_Ag)
+        
+        if (i+1) % save_freq == 0:
+            XAb_train, XAb_val, XAb_test = XAb[:int(0.8*len(XAb))], XAb[int(0.8*len(XAb)):int(0.9*len(XAb))], XAb[int(0.9*len(XAb)):]
+            XAg_train, XAg_val, XAg_test = XAg[:int(0.8*len(XAg))], XAg[int(0.8*len(XAg)):int(0.9*len(XAg))], XAg[int(0.9*len(XAg)):]
 
-    XAb_train, XAb_val, XAb_test = XAb[:int(0.8*len(XAb))], XAb[int(0.8*len(XAb)):int(0.9*len(XAb))], XAb[int(0.9*len(XAb)):]
-    XAg_train, XAg_val, XAg_test = XAg[:int(0.8*len(XAg))], XAg[int(0.8*len(XAg)):int(0.9*len(XAg))], XAg[int(0.9*len(XAg)):]
-            
-    # Training Data 
-    save_json(XAb_train, FLAGS.train_data_Ab)
-    save_json(XAg_train, FLAGS.train_data_Ag)
-    
+            # Training Data 
+            save_json(XAb_train, f'{FLAGS.train_data_folder}/XAb.json')
+            save_json(XAg_train, f'{FLAGS.train_data_folder}/XAg.json')
 
-    # Trainig Data 
-    save_json(XAb_val, FLAGS.val_data_Ab)
-    save_json(XAg_val, FLAGS.val_data_Ag)
-    
 
-    # Trainig Data 
-    save_json(XAb_test, FLAGS.test_data_Ab)
-    save_json(XAg_test, FLAGS.test_data_Ag)    
+            # Trainig Data 
+            save_json(XAb_val, f'{FLAGS.val_data_folder}/XAb.json')
+            save_json(XAg_val, f'{FLAGS.val_data_folder}/XAg.json')
+
+
+            # Trainig Data 
+            save_json(XAb_test, f'{FLAGS.test_data_folder}/XAb.json')
+            save_json(XAg_test, f'{FLAGS.test_data_folder}/XAg.json')    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()\
     
-    parser.add_argument('--summary_file_path', type=str, default=False)
+    parser.add_argument('--summary_file_path', type=str)
     
-    parser.add_argument('--train_data_Ab', type=str, default=True)
-    parser.add_argument('--train_data_Ag', type=str, default=True)
-    
-    parser.add_argument('--val_data_Ab', type=str, default=True)
-    parser.add_argument('--val_data_Ag', type=str, default=True)
-    
-    parser.add_argument('--test_data_Ab', type=str, default=True)
-    parser.add_argument('--test_data_Ag', type=str, default=True)
+    parser.add_argument('--train_data_folder', type=str)
+    parser.add_argument('--val_data_folder', type=str)
+    parser.add_argument('--test_data_folder', type=str)
     
     FLAGS, UNPARSED_ARGV = parser.parse_known_args()
     
