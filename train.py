@@ -130,31 +130,30 @@ def collate(samples):
 def main(FLAGS, UNPARSED_ARGV):
 
     # Prepare data
-    train_dataset = _Antibody_Antigen_Dataset_(FLAGS.train_data[0], FLAGS.train_data[1])
-    print("Dataset Created!!")
+    train_dataset = _Antibody_Antigen_Dataset_(FLAGS.train_data_Ab, FLAGS.train_data_Ag)
     train_loader = DataLoader(train_dataset, 
                               batch_size=FLAGS.batch_size, 
                               shuffle=True, 
                               collate_fn=collate, 
                               num_workers=FLAGS.num_workers)
 
-#     val_dataset = _Antibody_Antigen_Dataset_(FLAGS.val_data[0], FLAGS.val_data[1]) 
-#     val_loader = DataLoader(val_dataset, 
-#                             batch_size=FLAGS.batch_size, 
-#                             shuffle=False, 
-#                             collate_fn=collate, 
-#                             num_workers=FLAGS.num_workers)
+    val_dataset = _Antibody_Antigen_Dataset_(FLAGS.val_data_Ab, FLAGS.val_data_Ag) 
+    val_loader = DataLoader(val_dataset, 
+                            batch_size=FLAGS.batch_size, 
+                            shuffle=False, 
+                            collate_fn=collate, 
+                            num_workers=FLAGS.num_workers)
 
-#     test_dataset = _Antibody_Antigen_Dataset_(FLAGS.test_data[0], FLAGS.test_data[1]) 
-#     test_loader = DataLoader(test_dataset, 
-#                              batch_size=FLAGS.batch_size, 
-#                              shuffle=False, 
-#                              collate_fn=collate, 
-#                              num_workers=FLAGS.num_workers)
+    test_dataset = _Antibody_Antigen_Dataset_(FLAGS.test_data_Ab, FLAGS.test_data_Ag) 
+    test_loader = DataLoader(test_dataset, 
+                             batch_size=FLAGS.batch_size, 
+                             shuffle=False, 
+                             collate_fn=collate, 
+                             num_workers=FLAGS.num_workers)
 
     FLAGS.train_size = len(train_dataset)
-#     FLAGS.val_size = len(val_dataset)
-#     FLAGS.test_size = len(test_dataset)
+    FLAGS.val_size = len(val_dataset)
+    FLAGS.test_size = len(test_dataset)
 
     # Choose model
     seq_emb = models.get_SeqEmb(FLAGS.pretrained_lm_model)
@@ -195,8 +194,8 @@ def main(FLAGS, UNPARSED_ARGV):
         print(f"Saved: {save_path}")
 
         train_epoch(epoch, model, seq_emb, task_loss, train_loader, optimizer, scheduler, FLAGS)
-#         val_epoch(epoch, model, seq_emb, task_loss, val_loader, FLAGS)
-#         test_epoch(epoch, model, seq_emb, task_loss, test_loader, FLAGS)
+        val_epoch(epoch, model, seq_emb, task_loss, val_loader, FLAGS)
+        test_epoch(epoch, model, seq_emb, task_loss, test_loader, FLAGS)
 
         
 if __name__ == '__main__':
@@ -241,14 +240,18 @@ if __name__ == '__main__':
             help="Number of epochs")
 
     # Data
-    parser.add_argument('--meta_data_address', type=str, default='data/SabDab/sample_sabdab_summary.csv',
-            help="Address to structure file")
-    parser.add_argument('--train_data', type=list, default=['/X_Ab.json', '/X_Ag.json'],
-            help="training data - Antibodies, Antigens")
-    parser.add_argument('--val_data', type=list, default=['data/SabDab/X_Ab.json', 'data/SabDab/X_Ag.json'],
-            help="training data - Antibodies, Antigens")
-    parser.add_argument('--test_data', type=list, default=['data/SabDab/X_Ab.json', 'data/SabDab/X_Ag.json'],
-            help="training data - Antibodies, Antigens")
+    parser.add_argument('--train_data_Ab', type=str, default='data/SabDab/train/X_Ab.json',
+            help="training data - Antibodies")
+    parser.add_argument('--train_data_Ag', type=str, default='data/SabDab/train/X_Ag.json',
+            help="training data - Antigens")
+    parser.add_argument('--val_data_Ab', type=str, default='data/SabDab/val/X_Ab.json',
+            help="validation data - Antibodies")
+    parser.add_argument('--val_data_Ag', type=str, default='data/SabDab/val/X_Ag.json', 
+            help="validation data - Antigens")
+    parser.add_argument('--test_data_Ab', type=str, default='data/SabDab/test/X_Ab.json',
+            help="validation data - Antibodies")
+    parser.add_argument('--test_data_Ag', type=str, default='data/SabDab/test/X_Ag.json', 
+            help="validation data - Antigens")
 
 
     # Logging
