@@ -8,15 +8,15 @@ import dgl
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-import gpytorch 
-from functools import partial
-from graphein.protein.edges.distance import add_k_nn_edges, add_hydrogen_bond_interactions, add_peptide_bonds
-from graphein.protein.features.nodes.amino_acid import amino_acid_one_hot
-# from graphein.ml.conversion import GraphFormatConvertor
-from graphein.protein.config import ProteinGraphConfig
-from graphein.protein.graphs import construct_graph
-from graphein.protein.visualisation import plot_protein_structure_graph
-from graphein.protein.edges.distance import add_hydrogen_bond_interactions, add_ionic_interactions, add_hydrophobic_interactions
+# import gpytorch 
+# from functools import partial
+# from graphein.protein.edges.distance import add_k_nn_edges, add_hydrogen_bond_interactions, add_peptide_bonds
+# from graphein.protein.features.nodes.amino_acid import amino_acid_one_hot
+# # from graphein.ml.conversion import GraphFormatConvertor
+# from graphein.protein.config import ProteinGraphConfig
+# from graphein.protein.graphs import construct_graph
+# from graphein.protein.visualisation import plot_protein_structure_graph
+# from graphein.protein.edges.distance import add_hydrogen_bond_interactions, add_ionic_interactions, add_hydrophobic_interactions
 
 DTYPE = np.float32
 class _Antibody_Antigen_Dataset(Dataset):
@@ -90,7 +90,7 @@ class _Antibody_Antigen_Dataset(Dataset):
         bb = nx.edge_betweenness_centrality(nxGraph, normalized=False)
         nx.set_edge_attributes(nxGraph, bb, "betweenness")    
         for src, dst, char in nxGraph.edges(data=True):
-            edge_w.append(char["betweenness"])
+            edge_w.append(char["betweenness"]) 
             edge_d.append((nxGraph.nodes[src]['coords']-nxGraph.nodes[dst]['coords']).astype(DTYPE))
         edge_w = torch.tensor(edge_w).view(len(edge_w), -1)
         edge_d = torch.tensor(edge_d).view(len(edge_d), -1)
@@ -216,6 +216,95 @@ class Antibody_Antigen_Dataset(Dataset):
 
         random.shuffle(data_list)
         return data_list
+        
+    def __len__(self):
+        return len(self.data_list)
+
+    def __getitem__(self, idx):
+        return self.data_list[idx]["Antibody"], self.data_list[idx]["Antigen"], self.data_list[idx]["target"] 
+
+    
+import json
+import random
+import numpy as np
+from tqdm import tqdm 
+
+import torch
+from torch.utils.data import Dataset
+import torch.nn.functional as F
+from torch_geometric.utils import to_dense_adj
+from pretrain_prot.structgen import protein_features 
+import dgl
+
+from pretrain_prot.utils import *
+
+DTYPE = np.float32
+class _Antibody_Antigen_Dataset_(Dataset):
+    node_feature_size, edge_feature_size = 6, 39
+    """Class for Antibody and Antigen data"""
+    def __init__(self, path_X_Ab, path_X_Ag, transform=None):
+        self.X_Ab = read_json(path_X_Ab)
+        self.X_Ag = read_json(path_X_Ag)
+        
+        self.data_list = self.create_data()
+
+    def get_structseq_lst(self, X):
+        print('Preparing Data')
+        features = ProteinFeatures()
+        
+        data_lst = []
+        for x in tqdm(X):
+            hchain = completize(x)
+            x_ca = np.array(hchain[0][0, :, 1, :].cpu())
+            V, E, E_idx = features(hchain[0], hchain[-1]) 
+            E, E_idx = to_torch_geom(E, E_idx)
+
+            # edge distance
+            edge_d = []
+            for src_id, dst_id in zip(np.array(E_idx[0, 0, :]), np.array(E_idx[0, 1, :])):
+                edge_d.append(x_ca[src_id] - x_ca[dst_id])
+            edge_d = torch.tensor(np.array(edge_d)).to(device)
+
+            ## dgl graph
+            # adjacency = nx.adjacency_matrix(nxGraph)
+            adjacency = to_dense_adj(E_idx[0, :, :])[0, :, :]
+            adjacency = np.array(adjacency)
+            src, dst = np.nonzero(adjacency)
+            dglGraph = dgl.graph((src, dst)).to(device)
+
+            # add node features
+            dglGraph.ndata['x'] = torch.tensor(x_ca).to(device)
+            dglGraph.ndata['f'] = V[0, :, :].unsqueeze(-1)
+
+            # add edge features
+            dglGraph.edata['d'] = edge_d
+            dglGraph.edata['w'] = E[0, :, :]
+
+            data_lst.append((dglGraph, hchain[1]))
+
+        return data_lst
+
+    def create_data(self):
+        structseq_list_Ab = self.get_structseq_lst(self.X_Ab)
+        structseq_list_Ag = self.get_structseq_lst(self.X_Ag)
+        data_lst = [{'Antibody': {'struct': struct_Ab, 'seq': seq_Ab}, 
+                     'Antigen': {'struct': struct_Ag, 'seq': seq_Ag}, 
+                     'target': np.asarray([1], dtype=DTYPE)} 
+                    for ((struct_Ab, seq_Ab), (struct_Ag, seq_Ag)) in zip(structseq_list_Ab, structseq_list_Ag)]
+        
+        print('Getting Negative Samples')
+        for i in tqdm(range(len(structseq_list_Ab))):
+            tmp_structseq_list_Ag = structseq_list_Ag.copy()
+            tmp_structseq_list_Ag.pop(i)
+
+            (struct_Ag, seq_Ag) = random.choices(tmp_structseq_list_Ag, k=1)[0]
+            
+            data_lst.append({'Antibody': {'struct': structseq_list_Ab[i][0], 'seq': structseq_list_Ab[i][1]}, 
+                            'Antigen': {'struct': struct_Ag, 'seq': seq_Ag}, 
+                            'target': np.asarray([0], dtype=DTYPE)})
+
+        random.shuffle(data_lst)
+        return data_lst
         
     def __len__(self):
         return len(self.data_list)
