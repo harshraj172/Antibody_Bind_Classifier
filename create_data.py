@@ -27,26 +27,54 @@ def save_json(X, path):
         json.dump(X, outfile)
         
 def main():
-    summary_df = pd.read_csv('data/SabDab/sabdab_summary_all.tsv', sep='\t')
+    summary_df = pd.read_csv(FLAGS.summary_file_path, sep='\t')
     summary_df = sabdab_df.dropna(subset=['Hchain', 'antigen_chain'])
     summary_df = sabdab_df.reset_index(drop=True)
 
-    X_AG, X_AB = [], []
+    XAg, XAb = [], []
     for i in range(len(summary_df)):
         pdb_id = summary_df['pdb'][i]
-        AG_chain = ''.join(summary_df['Hchain'][i].split('|'))
-        AB_chain = ''.join(summary_df['antigen_chain'][i].split('|'))
+        Ag_chain = ''.join(summary_df['Hchain'][i].split('|'))
+        Ab_chain = ''.join(summary_df['antigen_chain'][i].split('|'))
 
-        dict_AB = get_data(pdb_id, AB_chain)
-        dict_AG = get_data(pdb_id, AG_chain)
+        dict_Ab = get_data(pdb_id, Ab_chain)
+        dict_Ag = get_data(pdb_id, Ag_chain)
 
-        if dict_AB['coords']['CA']!=[] and dict_AG['coords']['CA']!=[]: 
-            X_AB.append(get_data(pdb_id, AB_chain))
-            X_AG.append(get_data(pdb_id, AG_chain))
+        if dict_Ab['coords']['CA']!=[] and dict_Ag['coords']['CA']!=[]: 
+            XAb.append(get_data(pdb_id, Ab_chain))
+            XAg.append(get_data(pdb_id, Ag_chain))
 
-    save_json(X_AB, 'X_AB.json')
-    save_json(X_AG, 'X_AG.json')
+    XAb_train, XAb_val, XAb_test = XAb[:int(0.8*len(XAb))], XAb[int(0.8*len(XAb)):int(0.9*len(XAb))], XAb[int(0.9*len(XAb)):]
+    XAg_train, XAg_val, XAg_test = XAg[:int(0.8*len(XAg))], XAg[int(0.8*len(XAg)):int(0.9*len(XAg))], XAg[int(0.9*len(XAg)):]
+            
+    # Training Data 
+    save_json(XAb_train, FLAGS.train_data_Ab)
+    save_json(XAg_train, FLAGS.train_data_Ag)
     
 
+    # Trainig Data 
+    save_json(XAb_val, FLAGS.val_data_Ab)
+    save_json(XAg_val, FLAGS.val_data_Ag)
+    
+
+    # Trainig Data 
+    save_json(XAb_test, FLAGS.test_data_Ab)
+    save_json(XAg_test, FLAGS.test_data_Ag)    
+
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()\
+    
+    parser.add_argument('--summary_file_path', type=str, default=False)
+    
+    parser.add_argument('--train_data_Ab', type=str, default=True)
+    parser.add_argument('--train_data_Ag', type=str, default=True)
+    
+    parser.add_argument('--val_data_Ab', type=str, default=True)
+    parser.add_argument('--val_data_Ag', type=str, default=True)
+    
+    parser.add_argument('--test_data_Ab', type=str, default=True)
+    parser.add_argument('--test_data_Ag', type=str, default=True)
+    
+    FLAGS, UNPARSED_ARGV = parser.parse_known_args()
+    
     main()
