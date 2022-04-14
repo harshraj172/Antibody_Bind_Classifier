@@ -1,6 +1,17 @@
 import pandas as pd
 import torch 
 
+# Loss function
+def task_loss(pred, target, criterion, use_mean=True):
+    eps = 1e-10
+    l1_loss = criterion(pred+eps, target)
+    l2_loss = torch.sum(torch.abs(pred - target))
+    if use_mean:
+        l2_loss /= pred.shape[0]
+
+    rescale_loss = l1_loss # train_dataset.norm2units(l1_loss, FLAGS.task)
+    return l1_loss, l2_loss, rescale_loss
+    
 def metric(y_true:torch.Tensor, y_pred:torch.Tensor, is_training=False) -> torch.Tensor:
     '''Calculate F1 score. Can work with gpu tensors
     
