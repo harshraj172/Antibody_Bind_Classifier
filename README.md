@@ -15,14 +15,15 @@ AIM : To classify the Binding Energy of an Antibody with an Antigen
 5. Train the model for classifying the classes of Binding Energy which are made based on pre assumed thresholds(thresholding ref.:https://www.biorxiv.org/content/10.1101/2021.07.08.451480v1).
 
 ### USAGE:
+Clone this repo using 
+`git clone https://github.com/harshraj172/Pretrain_ProtGNN.git`
+
 Download requirements.txt using
-> pip install -r requirements.txt
+`pip install -r requirements.txt`
 
 Clone Pretrain_ProtGNN using
-> git clone https://github.com/harshraj172/Pretrain_ProtGNN.git
+`git clone https://github.com/harshraj172/Pretrain_ProtGNN.git`
 
-Clone this repo
 
 The train script offers many options; here are the most important ones:
-
-    python train.py 
+`python train.py` 
