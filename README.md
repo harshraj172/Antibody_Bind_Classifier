@@ -3,7 +3,7 @@
 ### USAGE:
 Clone this repo using 
 
-```git clone https://github.com/harshraj172/Pretrain_ProtGNN.git```
+```git clone https://github.com/harshraj172/Bind_Classifier.git```
 
 ##### Download requirements.txt using
 
