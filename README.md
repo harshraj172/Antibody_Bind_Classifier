@@ -5,7 +5,7 @@ Clone this repo using
 
 ```git clone https://github.com/harshraj172/Bind_Classifier.git```
 
-##### Download requirements.txt using
+##### Download requirements.txt either manually or using
 
 ```pip install -r requirements.txt```
 
