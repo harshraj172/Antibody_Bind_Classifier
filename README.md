@@ -5,10 +5,40 @@ Clone this repo using
 
 ```git clone https://github.com/harshraj172/Pretrain_ProtGNN.git```
 
-Download requirements.txt using
+##### Download requirements.txt using
 
 ```pip install -r requirements.txt```
 
-The train script offers many options; here are the most important ones
+##### Data Creation:
+The Bind Classifier will be trained on SabDab dataset(http://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/)
 
-```python train.py```
+1. Download the Summary File from http://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/summary/1ahw/
+
+2. Run the below code which saves two json, of Antibody and Antigen separately.
+```Bind_classifier.create_data.py –summary_file_path 'path to summary file' –train_data_Ab 'path to save Antibody training data' –train_data_Ag 'path to save Antigen training data' –val_data_Ab 'path to save Antibody validation data' –val_data_Ag 'path to save Antigen validation data' –test_data_Ab 'path to save Antibody testing data' –test_data_Ab 'path to save Antigen testing data'```
+
+Antibody json(X_Ab_train.json) 
+
+Stores the coordinates of the N, CA, C, O atoms for every residue of the Antibody chain. It also stores the VH sequence under the key “seq”.
+
+Antigen json(X_Ag_train.json) 
+
+Stores the coordinates of the N, CA, C, O atoms for every residue of the Antigen chain. It also stores the protein sequence under the key “seq”.
+
+3. Training:
+The Bind Classifier is written to be trained on 3 types of inputs - Protein structure, Protein sequence, Protein structure+Protein sequence.
+Protein structure
+
+To train the model you need to run 
+
+Protein Structure:
+
+```python Bind_Classifier/train.py –use_seq False –use_struct True –train_data_Ab 'path to train Antibody json' –train_data_Ag 'path to train Antigen json' –val_data_Ab 'path to validation Antibody json' –val_data_Ag 'path to validation Antigen json' –test_data_Ab 'path to test Antibody json' –test_data_Ag 'path to test Antigen json'```
+
+Protein Sequence: 
+
+```python Bind_Classifier/train.py –use_seq True –use_struct False –train_data_Ab 'path to train Antibody json' –train_data_Ag 'path to train Antigen json' –val_data_Ab 'path to validation Antibody json' –val_data_Ag 'path to validation Antigen json' –test_data_Ab 'path to test Antibody json' –test_data_Ag 'path to test Antigen json'```
+
+Protein Sequence + Protein Structure"
+
+```python Bind_Classifier/train.py –use_seq True –use_struct True –train_data_Ab 'path to train Antibody json' –train_data_Ag 'path to train Antigen json' –val_data_Ab 'path to validation Antibody json' –val_data_Ag 'path to validation Antigen json' –test_data_Ab 'path to test Antibody json' –test_data_Ag 'path to test Antigen json'```
