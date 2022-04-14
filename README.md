@@ -16,7 +16,7 @@ The Bind Classifier will be trained on SabDab dataset(http://opig.stats.ox.ac.uk
 
 2. Run the below code which saves two json, of Antibody and Antigen separately.
 
-  ```Bind_classifier.create_data.py --summary_file_path 'path to summary file' --train_data_Ab 'path to save Antibody training data' --train_data_Ag 'path to save Antigen training data' --val_data_Ab 'path to save Antibody validation data' --val_data_Ag 'path to save Antigen validation data' --test_data_Ab 'path to save Antibody testing data' --test_data_Ab 'path to save Antigen testing data'```
+  ```python Bind_classifier.create_data.py --summary_file_path 'path to summary file' --train_data_folder 'folder to save training data' --val_data_folder 'folder to save validation data' --test_data_folder 'folder to save testing data'```
 
   Antibody json(X_Ab_train.json) 
 
