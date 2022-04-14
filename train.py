@@ -158,28 +158,19 @@ def main(FLAGS, UNPARSED_ARGV):
 
     # Choose model
     seq_emb = models.get_SeqEmb(FLAGS.pretrained_lm_model)
-    model = models.StructSeqNet(FLAGS.use_struct, 
-                         FLAGS.use_seq,
-                         FLAGS.num_layers, 
-                         train_dataset.node_feature_size, 
-                         train_dataset.edge_feature_size,
-                         FLAGS.pretrained_lm_model, 
-                         FLAGS.pretrained_lm_emb_dim,
-                         num_channels=FLAGS.num_channels,
-                         num_nlayers=FLAGS.num_nlayers,
-                         num_degrees=FLAGS.num_degrees,
-                         div=FLAGS.div,
-                         pooling=FLAGS.pooling,
-                         n_heads=FLAGS.head)
-    # model = StructNet(FLAGS.num_layers, 
-    #                   train_dataset.node_feature_size, 
-    #                   train_dataset.edge_feature_size,
-    #                   num_channels=FLAGS.num_channels,
-    #                   num_nlayers=FLAGS.num_nlayers,
-    #                   num_degrees=FLAGS.num_degrees,
-    #                   div=FLAGS.div,
-    #                   pooling=FLAGS.pooling,
-    #                   n_heads=FLAGS.head)
+    model = models.__dict__.get(FLAGS.model)(FLAGS.use_struct, 
+                                             FLAGS.use_seq,
+                                             FLAGS.num_layers, 
+                                             train_dataset.node_feature_size, 
+                                             train_dataset.edge_feature_size,
+                                             FLAGS.pretrained_lm_model, 
+                                             FLAGS.pretrained_lm_emb_dim,
+                                             num_channels=FLAGS.num_channels,
+                                             num_nlayers=FLAGS.num_nlayers,
+                                             num_degrees=FLAGS.num_degrees,
+                                             div=FLAGS.div,
+                                             pooling=FLAGS.pooling,
+                                             n_heads=FLAGS.head)
 
 
     if FLAGS.restore is not None:
@@ -217,7 +208,7 @@ if __name__ == '__main__':
             help="Use structure info of protein")
     
     # Model parameters
-    parser.add_argument('--model', type=str, default='SeqNet', 
+    parser.add_argument('--model', type=str, default='StructSeqNet', 
             help="String name of model")
     parser.add_argument('--pretrained_lm_model', type=str, default='esm1b_t33_650M_UR50S',
             help="Pretrained LM model name")
