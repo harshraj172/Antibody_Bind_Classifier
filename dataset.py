@@ -233,10 +233,10 @@ import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 from torch_geometric.utils import to_dense_adj
-from pretrain_prot.structgen import protein_features 
+from Pretrain_ProtGNN.structgen import protein_features 
 import dgl
 
-from pretrain_prot.utils import *
+from Pretrain_ProtGNN.utils import *
 
 DTYPE = np.float32
 class _Antibody_Antigen_Dataset_(Dataset):
