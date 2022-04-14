@@ -9,8 +9,8 @@ from torch import nn
 from torch.nn import functional as F
 from typing import Dict, Tuple, List
 
-from Bind_Classifier.equivariant_attention.modules import GConvSE3, GNormSE3, get_basis_and_r, GSE3Res, GMaxPooling, GAvgPooling
-from Bind_Classifier.equivariant_attention.fibers import Fiber
+from equivariant_attention.modules import GConvSE3, GNormSE3, get_basis_and_r, GSE3Res, GMaxPooling, GAvgPooling
+from equivariant_attention.fibers import Fiber
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
