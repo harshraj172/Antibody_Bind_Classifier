@@ -1,32 +1,16 @@
-from utils.utils_profiling import * # load before other local modules
-
-import argparse
-import os
-import sys
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
-
-import dgl
-import math
-import numpy as np
-import torch
-import wandb
-
-from torch import nn, optim
-from torch.nn import functional as F
-from torch.utils.data import DataLoader
-from dataset import _Antibody_Antigen_Dataset, Antibody_Antigen_Dataset
-
-import models #as models
-
 def to_np(x):
     return x.cpu().detach().numpy()
 
-def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, scheduler, FLAGS):
+def train_epoch(epoch, model, seq_emb, loss_fnc, dataloader, optimizer, scheduler, FLAGS):
     model.train()
-
+  
     num_iters = len(dataloader)
-    for i, (gAB, gAG, y) in enumerate(dataloader):
+    for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
+        hAB, hAG = torch.tensor([0]), torch.tensor([0])
+        if FLAGS.use_seq:
+            hAB, hAG = seq_emb.pretrained_emb(seqAB), seq_emb.pretrained_emb(seqAG)
+        hAB = hAB.to(FLAGS.device)
+        hAG = hAG.to(FLAGS.device)
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
         y = y.to(FLAGS.device)
@@ -34,7 +18,7 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, scheduler, FLAGS)
         optimizer.zero_grad()
 
         # run model forward and compute loss
-        pred = model(gAB, gAG)
+        pred = model(gAB, hAB, gAG, hAG)
         l1_loss, __, rescale_loss = loss_fnc(pred, y)
 
         # backprop
@@ -50,14 +34,15 @@ def train_epoch(epoch, model, loss_fnc, dataloader, optimizer, scheduler, FLAGS)
 
         if FLAGS.profile and i == 10:
             sys.exit()
-    
+
         scheduler.step(epoch + i / num_iters)
 
 def val_epoch(epoch, model, loss_fnc, dataloader, FLAGS):
     model.eval()
 
     rloss = 0
-    for i, (gAB, gAG, y) in enumerate(dataloader):
+    Y_true, Y_pred = torch.tensor([]), torch.tensor([])
+    for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
         y = y.to(FLAGS.device)
@@ -66,17 +51,27 @@ def val_epoch(epoch, model, loss_fnc, dataloader, FLAGS):
         pred = model(gAB, gAG).detach()
         __, __, rl = loss_fnc(pred, y, use_mean=False)
         rloss += rl
+        
+        # for evaluation
+        Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
+        Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
     rloss /= FLAGS.val_size
-
+    results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
+    
     print(f"...[{epoch}|val] rescale loss: {rloss:.5f} [units]")
+    print(results_df)
     if FLAGS.use_wandb:
-        wandb.log({"Val L1 loss": to_np(rloss)})
+        wandb.log({"val_precision": result_df['Precision'][0],
+                   "val_recall": result_df['Recall'][0], 
+                   "val_F1_score": result_df['F1 Score'][0], 
+                   "val_L1_loss": to_np(rloss)})
 
 def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS):
     model.eval()
 
     rloss = 0
-    for i, (gAB, gAG, y) in enumerate(dataloader):
+    Y_true, Y_pred = torch.tensor([]), torch.tensor([])
+    for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
         y = y.to(FLAGS.device)
@@ -85,70 +80,86 @@ def test_epoch(epoch, model, loss_fnc, dataloader, FLAGS):
         pred = model(gAB, gAG).detach()
         __, __, rl = loss_fnc(pred, y, use_mean=False)
         rloss += rl
+        
+        # for evaluation
+        Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
+        Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
     rloss /= FLAGS.test_size
-
+    results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
+    
     print(f"...[{epoch}|test] rescale loss: {rloss:.5f} [units]")
+    print(results_df)
     if FLAGS.use_wandb:
-        wandb.log({"Test L1 loss": to_np(rloss)})
+        wandb.log({"test_precision": result_df['Precision'][0],
+                   "test_recall": result_df['Recall'][0], 
+                   "test_F1_Score": result_df['F1 Score'][0], 
+                   "test_L1_loss": to_np(rloss)})
 
-
-class RandomRotation(object):
-    def __init__(self):
-        pass
-
-    def __call__(self, x):
-        M = np.random.randn(3,3)
-        Q, __ = np.linalg.qr(M)
-        return x @ Q
 
 def collate(samples):
-    graphsAB, graphsAG, y = map(list, zip(*samples))
-    batched_graphAB = dgl.batch(graphsAB)
-    batched_graphAG = dgl.batch(graphsAG)
-    return batched_graphAB, batched_graphAG, torch.tensor(y)
+    structseqAB_lst, structseqAG_lst, y = map(list, zip(*samples))
+    batched_graphAB = dgl.batch([s['struct'] for s in structseqAB_lst])
+    batched_graphAG = dgl.batch([s['struct'] for s in structseqAG_lst])
+    seqAB_lst = [('protein', s['seq'][:1017]) for s in structseqAB_lst]
+    seqAG_lst = [('protein', s['seq'][:1017]) for s in structseqAG_lst]
+    return batched_graphAB, seqAB_lst, batched_graphAG, seqAG_lst, torch.tensor(y)
+
 
 def main(FLAGS, UNPARSED_ARGV):
 
     # Prepare data
-    train_dataset = Antibody_Antigen_Dataset(FLAGS.meta_data_address, 
-                                                     mode='train', 
-                                                     transform=RandomRotation())
+    train_dataset = _Antibody_Antigen_Dataset_(FLAGS.train_data[0], FLAGS.train_data[1])
+    print("Dataset Created!!")
     train_loader = DataLoader(train_dataset, 
                               batch_size=FLAGS.batch_size, 
-			                        shuffle=True, 
+                              shuffle=True, 
                               collate_fn=collate, 
                               num_workers=FLAGS.num_workers)
 
-    val_dataset = Antibody_Antigen_Dataset(FLAGS.meta_data_address, 
-                                                   mode='valid') 
-    val_loader = DataLoader(val_dataset, 
-                            batch_size=FLAGS.batch_size, 
-			                      shuffle=False, 
-                            collate_fn=collate, 
-                            num_workers=FLAGS.num_workers)
+#     val_dataset = _Antibody_Antigen_Dataset_(FLAGS.val_data[0], FLAGS.val_data[1]) 
+#     val_loader = DataLoader(val_dataset, 
+#                             batch_size=FLAGS.batch_size, 
+#                             shuffle=False, 
+#                             collate_fn=collate, 
+#                             num_workers=FLAGS.num_workers)
 
-    test_dataset = Antibody_Antigen_Dataset(FLAGS.meta_data_address, 
-                                                    mode='test') 
-    test_loader = DataLoader(test_dataset, 
-                             batch_size=FLAGS.batch_size, 
-			                       shuffle=False, 
-                             collate_fn=collate, 
-                             num_workers=FLAGS.num_workers)
+#     test_dataset = _Antibody_Antigen_Dataset_(FLAGS.test_data[0], FLAGS.test_data[1]) 
+#     test_loader = DataLoader(test_dataset, 
+#                              batch_size=FLAGS.batch_size, 
+#                              shuffle=False, 
+#                              collate_fn=collate, 
+#                              num_workers=FLAGS.num_workers)
 
     FLAGS.train_size = len(train_dataset)
-    FLAGS.val_size = len(val_dataset)
-    FLAGS.test_size = len(test_dataset)
+#     FLAGS.val_size = len(val_dataset)
+#     FLAGS.test_size = len(test_dataset)
 
     # Choose model
-    model = models.__dict__.get(FLAGS.model)(FLAGS.num_layers, 
-                                             train_dataset.atom_feature_size, 
-                                             FLAGS.num_channels,
-                                             num_nlayers=FLAGS.num_nlayers,
-                                             num_degrees=FLAGS.num_degrees,
-                                             edge_dim=train_dataset.num_bonds,
-                                             div=FLAGS.div,
-                                             pooling=FLAGS.pooling,
-                                             n_heads=FLAGS.head)
+    seq_emb = models.get_SeqEmb(FLAGS.pretrained_lm_model)
+    model = models.StructSeqNet(FLAGS.use_struct, 
+                         FLAGS.use_seq,
+                         FLAGS.num_layers, 
+                         train_dataset.node_feature_size, 
+                         train_dataset.edge_feature_size,
+                         FLAGS.pretrained_lm_model, 
+                         FLAGS.pretrained_lm_emb_dim,
+                         num_channels=FLAGS.num_channels,
+                         num_nlayers=FLAGS.num_nlayers,
+                         num_degrees=FLAGS.num_degrees,
+                         div=FLAGS.div,
+                         pooling=FLAGS.pooling,
+                         n_heads=FLAGS.head)
+    # model = StructNet(FLAGS.num_layers, 
+    #                   train_dataset.node_feature_size, 
+    #                   train_dataset.edge_feature_size,
+    #                   num_channels=FLAGS.num_channels,
+    #                   num_nlayers=FLAGS.num_nlayers,
+    #                   num_degrees=FLAGS.num_degrees,
+    #                   div=FLAGS.div,
+    #                   pooling=FLAGS.pooling,
+    #                   n_heads=FLAGS.head)
+
+
     if FLAGS.restore is not None:
         model.load_state_dict(torch.load(FLAGS.restore))
     model.to(FLAGS.device)
@@ -161,54 +172,42 @@ def main(FLAGS, UNPARSED_ARGV):
                                                                eta_min=1e-4)
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    # Loss function
-    def task_loss(pred, target, use_mean=True):
-	eps = 1e-10
-        l1_loss = criterion(pred+eps, target)
-        l2_loss = torch.sum(torch.abs(pred - target))
-        if use_mean:
-            l2_loss /= pred.shape[0]
-
-        rescale_loss = l1_loss # train_dataset.norm2units(l1_loss, FLAGS.task)
-        return l1_loss, l2_loss, rescale_loss
-      
-    # Loss function
-#     def task_loss(pred, target, use_mean=True):
-#         l1_loss = torch.sum(torch.abs(pred - target))
-#         l2_loss = torch.sum((pred - target)**2)
-#         if use_mean:
-#             l1_loss /= pred.shape[0]
-#             l2_loss /= pred.shape[0]
-
-#         rescale_loss = train_dataset.norm2units(l1_loss, FLAGS.task)
-#         return l1_loss, l2_loss, rescale_loss
-
     # Save path
     save_path = os.path.join(FLAGS.save_dir, FLAGS.name + '.pt')
-
+    
     # Run training
     print('Begin training')
     for epoch in range(FLAGS.num_epochs):
         torch.save(model.state_dict(), save_path)
         print(f"Saved: {save_path}")
 
-        train_epoch(epoch, model, task_loss, train_loader, optimizer, scheduler, FLAGS)
-        val_epoch(epoch, model, task_loss, val_loader, FLAGS)
-        test_epoch(epoch, model, task_loss, test_loader, FLAGS)
+        train_epoch(epoch, model, seq_emb, task_loss, train_loader, optimizer, scheduler, FLAGS)
+#         val_epoch(epoch, model, seq_emb, task_loss, val_loader, FLAGS)
+#         test_epoch(epoch, model, seq_emb, task_loss, test_loader, FLAGS)
 
-
+        
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-
+    parser = argparse.ArgumentParser()\
+    
+    parser.add_argument('--use_seq', type=eval, default=False,
+            help="Use sequence info of protein")
+    parser.add_argument('--use_struct', type=eval, default=True,
+            help="Use structure info of protein")
+    
     # Model parameters
-    parser.add_argument('--model', type=str, default='Dual_SE3Transformer', 
+    parser.add_argument('--model', type=str, default='SeqNet', 
             help="String name of model")
-    parser.add_argument('--num_layers', type=int, default=4,
-            help="Number of equivariant layers")
-    parser.add_argument('--num_degrees', type=int, default=4,
-            help="Number of irreps {0,1,...,num_degrees-1}")
-    parser.add_argument('--num_channels', type=int, default=16,
-            help="Number of channels in middle layers")
+    parser.add_argument('--pretrained_lm_model', type=str, default='esm1b_t33_650M_UR50S',
+            help="Pretrained LM model name")
+    parser.add_argument('--pretrained_lm_emb_dim', type=int, default=1280,
+            help="Pretrained LM model out dim")
+    
+    parser.add_argument('--num_layers', type=int, default=1,
+            help="Number of equivariant layers") #4
+    parser.add_argument('--num_degrees', type=int, default=2,
+            help="Number of irreps {0,1,...,num_degrees-1}") #4
+    parser.add_argument('--num_channels', type=int, default=4,
+            help="Number of channels in middle layers") #16
     parser.add_argument('--num_nlayers', type=int, default=0,
             help="Number of layers for nonlinearity")
     parser.add_argument('--fully_connected', action='store_true',
@@ -221,7 +220,7 @@ if __name__ == '__main__':
             help="Number of attention heads")
 
     # Meta-parameters
-    parser.add_argument('--batch_size', type=int, default=8, 
+    parser.add_argument('--batch_size', type=int, default=1, 
             help="Batch size")
     parser.add_argument('--lr', type=float, default=1e-3, 
             help="Learning rate")
@@ -229,10 +228,15 @@ if __name__ == '__main__':
             help="Number of epochs")
 
     # Data
-    parser.add_argument('--meta_data_address', type=str, default='/content/meta_file.csv',
+    parser.add_argument('--meta_data_address', type=str, default='data/SabDab/sample_sabdab_summary.csv',
             help="Address to structure file")
-    parser.add_argument('--task', type=str, default='BindClassification',
-            help="task ['BindClassification']")
+    parser.add_argument('--train_data', type=list, default=['data/SabDab/X_Ab.json', 'data/SabDab/X_Ag.json'],
+            help="training data - Antibodies, Antigens")
+    parser.add_argument('--val_data', type=list, default=['data/SabDab/X_Ab.json', 'data/SabDab/X_Ag.json'],
+            help="training data - Antibodies, Antigens")
+    parser.add_argument('--test_data', type=list, default=['data/SabDab/X_Ab.json', 'data/SabDab/X_Ag.json'],
+            help="training data - Antibodies, Antigens")
+
 
     # Logging
     parser.add_argument('--name', type=str, default=None,
@@ -251,7 +255,7 @@ if __name__ == '__main__':
             help="wandb project name")
 
     # Miscellanea
-    parser.add_argument('--num_workers', type=int, default=4, 
+    parser.add_argument('--num_workers', type=int, default=0, 
             help="Number of data loader workers")
     parser.add_argument('--profile', action='store_true',
             help="Exit after 10 steps for profiling")
@@ -278,11 +282,11 @@ if __name__ == '__main__':
     FLAGS.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
     
     if FLAGS.use_wandb:
-      # Log all args to wandb
-      if FLAGS.name:
-          wandb.init(project=f'{FLAGS.wandb}', name=f'{FLAGS.name}')
-      else:
-          wandb.init(project=f'{FLAGS.wandb}')
+        # Log all args to wandb
+        if FLAGS.name:
+            wandb.init(project=f'{FLAGS.wandb}', name=f'{FLAGS.name}')
+        else:
+            wandb.init(project=f'{FLAGS.wandb}')
 
     print("\n\nFLAGS:", FLAGS)
     print("UNPARSED_ARGV:", UNPARSED_ARGV, "\n\n")
