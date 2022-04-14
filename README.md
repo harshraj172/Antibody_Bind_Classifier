@@ -12,7 +12,7 @@ Clone this repo using
 ##### Data Creation:
 The Bind Classifier will be trained on SabDab dataset(http://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/)
 
-1. Download the Summary File from http://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/summary/1ahw/
+1. Download the Summary File from http://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/summary/all/
 
 2. Run the below code which saves two json, of Antibody and Antigen separately.
 
