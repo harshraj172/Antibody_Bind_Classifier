@@ -34,12 +34,12 @@ The Bind Classifier will be trained on SabDab dataset(http://opig.stats.ox.ac.uk
 
     Protein Structure:
 
-    ```python Bind_Classifier/train.py –use_seq False –use_struct True –train_data_Ab 'path to train Antibody json' –train_data_Ag 'path to train Antigen json' –           val_data_Ab 'path to validation Antibody json' –val_data_Ag 'path to validation Antigen json' –test_data_Ab 'path to test Antibody json' –test_data_Ag 'path to         test Antigen json'```
+    ```python Bind_Classifier/train.py –-use_seq False –-use_struct True –-train_data_Ab 'path to train Antibody json' –-train_data_Ag 'path to train Antigen json' –-           val_data_Ab 'path to validation Antibody json' –-val_data_Ag 'path to validation Antigen json' -–test_data_Ab 'path to test Antibody json' -–test_data_Ag 'path to test Antigen json'```
 
     Protein Sequence: 
 
-    ```python Bind_Classifier/train.py –use_seq True –use_struct False –train_data_Ab 'path to train Antibody json' –train_data_Ag 'path to train Antigen json' –           val_data_Ab 'path to validation Antibody json' –val_data_Ag 'path to validation Antigen json' –test_data_Ab 'path to test Antibody json' –test_data_Ag 'path to         test Antigen json'```
+    ```python Bind_Classifier/train.py –-use_seq True –-use_struct False -–train_data_Ab 'path to train Antibody json' -–train_data_Ag 'path to train Antigen json' -–           val_data_Ab 'path to validation Antibody json' –-val_data_Ag 'path to validation Antigen json' –-test_data_Ab 'path to test Antibody json' -–test_data_Ag 'path to test Antigen json'```
 
     Protein Sequence + Protein Structure"
 
-    ```python Bind_Classifier/train.py –use_seq True –use_struct True –train_data_Ab 'path to train Antibody json' –train_data_Ag 'path to train Antigen json' –          val_data_Ab 'path to validation Antibody json' –val_data_Ag 'path to validation Antigen json' –test_data_Ab 'path to test Antibody json' –test_data_Ag 'path to test    Antigen json'```
+    ```python Bind_Classifier/train.py –-use_seq True –-use_struct True –-train_data_Ab 'path to train Antibody json' -–train_data_Ag 'path to train Antigen json' -–          val_data_Ab 'path to validation Antibody json' –-val_data_Ag 'path to validation Antigen json' -–test_data_Ab 'path to test Antibody json' -–test_data_Ag 'path to test Antigen json'```
