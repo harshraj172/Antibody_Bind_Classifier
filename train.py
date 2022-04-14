@@ -1,3 +1,25 @@
+from utils.utils_profiling import * # load before other local modules
+
+import argparse
+import os
+import sys
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+import dgl
+import math
+import numpy as np
+import torch
+# import wandb
+
+from torch import nn, optim
+from torch.nn import functional as F
+from torch.utils.data import DataLoader
+from dataset import _Antibody_Antigen_Dataset_
+
+import models as models
+from glob_utils import *
+
 def to_np(x):
     return x.cpu().detach().numpy()
 
@@ -230,7 +252,7 @@ if __name__ == '__main__':
     # Data
     parser.add_argument('--meta_data_address', type=str, default='data/SabDab/sample_sabdab_summary.csv',
             help="Address to structure file")
-    parser.add_argument('--train_data', type=list, default=['data/SabDab/X_Ab.json', 'data/SabDab/X_Ag.json'],
+    parser.add_argument('--train_data', type=list, default=['/X_Ab.json', '/X_Ag.json'],
             help="training data - Antibodies, Antigens")
     parser.add_argument('--val_data', type=list, default=['data/SabDab/X_Ab.json', 'data/SabDab/X_Ag.json'],
             help="training data - Antibodies, Antigens")
