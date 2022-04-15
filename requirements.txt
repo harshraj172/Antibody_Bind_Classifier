@@ -1,3 +1,4 @@
+python3.7
 pip install biopython
 pip install prody
 pip install fair-esm
