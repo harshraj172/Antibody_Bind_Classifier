@@ -254,33 +254,36 @@ class _Antibody_Antigen_Dataset_(Dataset):
         
         data_lst = []
         for x in tqdm(X):
-            hchain = completize(x)
-            x_ca = np.array(hchain[0][0, :, 1, :].cpu())
-            V, E, E_idx = features(hchain[0], hchain[-1]) 
-            E, E_idx = to_torch_geom(E, E_idx)
+            try:
+                hchain = completize(x)
+                x_ca = np.array(hchain[0][0, :, 1, :].cpu())
+                V, E, E_idx = features(hchain[0], hchain[-1]) 
+                E, E_idx = to_torch_geom(E, E_idx)
 
-            # edge distance
-            edge_d = []
-            for src_id, dst_id in zip(np.array(E_idx[0, 0, :]), np.array(E_idx[0, 1, :])):
-                edge_d.append(x_ca[src_id] - x_ca[dst_id])
-            edge_d = torch.tensor(np.array(edge_d)).to(device)
+                # edge distance
+                edge_d = []
+                for src_id, dst_id in zip(np.array(E_idx[0, 0, :]), np.array(E_idx[0, 1, :])):
+                    edge_d.append(x_ca[src_id] - x_ca[dst_id])
+                edge_d = torch.tensor(np.array(edge_d)).to(device)
 
-            ## dgl graph
-            # adjacency = nx.adjacency_matrix(nxGraph)
-            adjacency = to_dense_adj(E_idx[0, :, :])[0, :, :]
-            adjacency = np.array(adjacency)
-            src, dst = np.nonzero(adjacency)
-            dglGraph = dgl.graph((src, dst)).to(device)
+                ## dgl graph
+                # adjacency = nx.adjacency_matrix(nxGraph)
+                adjacency = to_dense_adj(E_idx[0, :, :])[0, :, :]
+                adjacency = np.array(adjacency)
+                src, dst = np.nonzero(adjacency)
+                dglGraph = dgl.graph((src, dst)).to(device)
 
-            # add node features
-            dglGraph.ndata['x'] = torch.tensor(x_ca).to(device)
-            dglGraph.ndata['f'] = V[0, :, :].unsqueeze(-1)
+                # add node features
+                dglGraph.ndata['x'] = torch.tensor(x_ca).to(device)
+                dglGraph.ndata['f'] = V[0, :, :].unsqueeze(-1)
 
-            # add edge features
-            dglGraph.edata['d'] = edge_d
-            dglGraph.edata['w'] = E[0, :, :]
+                # add edge features
+                dglGraph.edata['d'] = edge_d
+                dglGraph.edata['w'] = E[0, :, :]
 
-            data_lst.append((dglGraph, hchain[1]))
+                data_lst.append((dglGraph, hchain[1]))
+            except:
+                pass
 
         return data_lst
 
@@ -291,7 +294,7 @@ class _Antibody_Antigen_Dataset_(Dataset):
                      'Antigen': {'struct': struct_Ag, 'seq': seq_Ag}, 
                      'target': np.asarray([1], dtype=DTYPE)} 
                     for ((struct_Ab, seq_Ab), (struct_Ag, seq_Ag)) in zip(structseq_list_Ab, structseq_list_Ag)]
-        
+
         print('Getting Negative Samples')
         for i in tqdm(range(len(structseq_list_Ab))):
             tmp_structseq_list_Ag = structseq_list_Ag.copy()
