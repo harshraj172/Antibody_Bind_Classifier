@@ -256,7 +256,7 @@ if __name__ == '__main__':
     # Data
     parser.add_argument('--train_data_dir', type=str, default='data/SabDab/train',
             help="training data directory Antibodies")
-    parser.add_argument('--val_data_dir', type=str, default='data/SabDab/val',
+    parser.add_argument('--val_data_dir', type=str, default='data/SabDab/test',
             help="validation data directory Antibodies")
     parser.add_argument('--test_data_dir', type=str, default='data/SabDab/test',
             help="validation data directory Antibodies")
