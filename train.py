@@ -10,7 +10,7 @@ import dgl
 import math
 import numpy as np
 import torch
-# import wandb
+import wandb
 
 from torch import nn, optim
 from torch.nn import functional as F
@@ -41,6 +41,7 @@ def train_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, optimize
 
         # run model forward and compute loss
         pred = model(gAB, hAB, gAG, hAG)
+    
         l1_loss, __ = loss_fnc(pred, y, criterion)
 
         # backprop
@@ -88,9 +89,9 @@ def val_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
     print(results_df)
     if FLAGS.use_wandb:
         wandb.log({"val L1 loss": to_np(rloss),
-                   "val_precision": result_df['Precision'][0],
-                   "val_recall": result_df['Recall'][0], 
-                   "val_F1_score": result_df['F1 Score'][0], 
+                   "val_precision": results_df['Precision'][0],
+                   "val_recall": results_df['Recall'][0], 
+                   "val_F1_score": results_df['F1 Score'][0], 
                    "val_L1_loss": to_np(rloss)})
 
 def test_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
@@ -123,9 +124,9 @@ def test_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
     print(results_df)
     if FLAGS.use_wandb:
         wandb.log({"test L1 loss": to_np(rloss),
-                   "test_precision": result_df['Precision'][0],
-                   "test_recall": result_df['Recall'][0], 
-                   "test_F1_Score": result_df['F1 Score'][0], 
+                   "test_precision": results_df['Precision'][0],
+                   "test_recall": results_df['Recall'][0], 
+                   "test_F1_Score": results_df['F1 Score'][0], 
                    "test_L1_loss": to_np(rloss)})
 
 
@@ -233,7 +234,7 @@ if __name__ == '__main__':
             help="Number of irreps {0,1,...,num_degrees-1}") #4
     parser.add_argument('--num_channels', type=int, default=4,
             help="Number of channels in middle layers") #16
-    parser.add_argument('--num_nlayers', type=int, default=0,
+    parser.add_argument('--num_nlayers', type=int, default=1,
             help="Number of layers for nonlinearity")
     parser.add_argument('--fully_connected', action='store_true',
             help="Include global node in graph")
@@ -264,7 +265,7 @@ if __name__ == '__main__':
     # Logging
     parser.add_argument('--name', type=str, default=None,
             help="Run name")
-    parser.add_argument('--use_wandb', type=eval, default=False,
+    parser.add_argument('--use_wandb', type=eval, default=True,
             help="To use wandb or not - [True, False]")
     parser.add_argument('--log_interval', type=int, default=25,
             help="Number of steps between logging key stats")
@@ -274,7 +275,7 @@ if __name__ == '__main__':
             help="Directory name to save models")
     parser.add_argument('--restore', type=str, default=None,
             help="Path to model to restore")
-    parser.add_argument('--wandb', type=str, default='equivariant-attention', 
+    parser.add_argument('--wandb', type=str, default='Bind-Classifier', 
             help="wandb project name")
 
     # Miscellanea
@@ -303,16 +304,27 @@ if __name__ == '__main__':
 
     # Automatically choose GPU if available
     FLAGS.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
-    
-    if FLAGS.use_wandb:
-        # Log all args to wandb
-        if FLAGS.name:
-            wandb.init(project=f'{FLAGS.wandb}', name=f'{FLAGS.name}')
-        else:
-            wandb.init(project=f'{FLAGS.wandb}')
 
     print("\n\nFLAGS:", FLAGS)
     print("UNPARSED_ARGV:", UNPARSED_ARGV, "\n\n")
+    
+    config = {
+      "num_layers": FLAGS.num_layers,
+      "num_degrees": FLAGS.num_degrees,
+      "num_channels": FLAGS.num_channels,
+      "num_nonliner_layers": FLAGS.num_nlayers,
+      "head": FLAGS.head,
+      "batch size": FLAGS.batch_size,
+      "learning_rate": FLAGS.lr,
+      "epochs": FLAGS.num_epochs,
+    }
+
+    if FLAGS.use_wandb:
+        # Log all args to wandb
+        if FLAGS.name:
+            wandb.init(config=config, project=f'{FLAGS.wandb}', name=f'{FLAGS.name}', entity="harsh1729")
+        else:
+            wandb.init(config=config, project=f'{FLAGS.wandb}', entity="harsh1729")
 
     # Where the magic is
     main(FLAGS, UNPARSED_ARGV)
