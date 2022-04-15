@@ -67,11 +67,11 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()\
     
-    parser.add_argument('--summary_file_path', type=str)
+    parser.add_argument('--summary_file_path', default='sabdab_summary_all.tsv', type=str)
     
-    parser.add_argument('--train_data_folder', type=str)
-    parser.add_argument('--val_data_folder', type=str)
-    parser.add_argument('--test_data_folder', type=str)
+    parser.add_argument('--train_data_folder', type=str, default='train')
+    parser.add_argument('--val_data_folder', type=str, default='val')
+    parser.add_argument('--test_data_folder', type=str, default='test')
     
     FLAGS, UNPARSED_ARGV = parser.parse_known_args()
     
