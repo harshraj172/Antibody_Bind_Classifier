@@ -21,6 +21,7 @@ def metric(y_true:torch.Tensor, y_pred:torch.Tensor, is_training=False) -> torch
     torch.Tensor
         `ndim` == 1. 0 <= val <= 1
     '''
+    
     assert y_true.ndim == 1
     assert y_pred.ndim == 1 
     
