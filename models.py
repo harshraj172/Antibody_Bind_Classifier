@@ -166,11 +166,6 @@ class StructNet(nn.Module):
         self.Gblock_AB, self.FCblock_AB = blocks_AB
         self.Gblock_AG, self.FCblock_AG = blocks_AG
         
-        layers = []
-        layers.append(nn.Linear(self.fibers['out'].n_features, 1))
-        layers.append(nn.ReLU(inplace=True))
-        self.combine_block = nn.ModuleList(layers)
-        
         
     def _build_gcn(self, fibers):
         # Equivariant layers
@@ -204,15 +199,19 @@ class StructNet(nn.Module):
 
         # encoder (equivariant layers)
         h_AB, h_AG = {'0': G_AB.ndata['f']}, {'0': G_AG.ndata['f']}
+        # print(f"Antibody = {h_AB}")
+        # print(f"Antigen = {h_AG}")
         for i in range(len(self.Gblock_AB)):
             h_AB, h_AG = self.Gblock_AB[i](h_AB, G=G_AB, r=r_AB, basis=basis_AB),\
                          self.Gblock_AG[i](h_AG, G=G_AG, r=r_AG, basis=basis_AG)
-
+        # print(f"Antibody = {h_AB}")
+        # print(f"Antigen = {h_AG}")
         for i in range(len(self.FCblock_AB)):
             h_AB, h_AG = self.FCblock_AB[i](h_AB), self.FCblock_AG[i](h_AG)
-            
+        # print(f"Antibody = {h_AB}")
+        # print(f"Antigen = {h_AG}")
         h = torch.diag(torch.matmul(h_AB, h_AG.permute(1, 0))).unsqueeze(-1)
-        
+        # print(f"END = {h}")
         return h
 
 
@@ -284,6 +283,7 @@ class StructSeqNet(nn.Module):
         h = torch.cat((h1, h2), dim=1)
                                 
         for layer in self.comblayers:
+            print(h)
             h = layer(h)
                                 
         return h
