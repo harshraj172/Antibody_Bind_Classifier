@@ -250,7 +250,7 @@ if __name__ == '__main__':
             help="Batch size")
     parser.add_argument('--lr', type=float, default=1e-3, 
             help="Learning rate")
-    parser.add_argument('--num_epochs', type=int, default=50, 
+    parser.add_argument('--num_epochs', type=int, default=1, 
             help="Number of epochs")
 
     # Data
