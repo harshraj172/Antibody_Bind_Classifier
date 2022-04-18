@@ -45,13 +45,13 @@ def train(encoder_model, contrast_model, dataloader, optimizer, topk=1):
     return epoch_loss, epoch_acc/num_batches
 
 
-def test(encoder_model, path_Ab, path_Ag, batch_size):
+def test(encoder_model, path_Ab, path_Ag):
     encoder_model.eval()
-    data_lst_Ab = prepare_data(path_Ab, batch_size)
-    data_lst_Ag = prepare_data(path_Ag, batch_size)
-    loader1 = DataLoader(data_lst_Ab, batch_size=batch_size)
-    loader2 = DataLoader(data_lst_Ag, batch_size=batch_size)
-    
+    data_lst_Ab = prepare_data(path_Ab)
+    data_lst_Ag = prepare_data(path_Ag)
+    loader1 = DataLoader(data_lst_Ab, batch_size=args.test_batch_size)
+    loader2 = DataLoader(data_lst_Ag, batch_size=args.test_batch_size)
+    print("Test Data Loaded!!!")
     acc, num_samples = 0, 0
     
     for i, (data1, data2) in enumerate(zip(cycle(loader1), loader2)):
@@ -74,7 +74,7 @@ def test(encoder_model, path_Ab, path_Ag, batch_size):
 
 
 def main():
-    data_lst = prepare_data(args.data_path, args.batch_size)
+    data_lst = prepare_data(args.data_path)
     dataloader = DataLoader(data_lst, batch_size=args.batch_size)
     node_dim = max(data_lst[0].x.size(-1), 1)
     edge_dim = max(data_lst[0].edge_attr.size(-1), 1)
@@ -86,7 +86,7 @@ def main():
                            A.FeatureMasking(pf=args.pf),
                            A.EdgeRemoving(pe=args.pe)], 1)
     gconv = GConv(node_dim=node_dim, edge_dim=edge_dim, hidden_dim=args.hidden_dim, num_layers=args.num_layers).to(args.device)
-    encoder_model = Encoder(encoder=gconv, augmentor=(aug1, aug2)).to(args.device)
+    encoder_model = AugEncoder(encoder=gconv, augmentor=(aug1, aug2)).to(args.device)
     contrast_model = DualBranchContrast(loss=InfoNCE(tau=args.temperature), mode='G2G').to(args.device)
 
     optimizer = Adam(encoder_model.parameters(), lr=args.lr)
@@ -97,15 +97,18 @@ def main():
             if (epoch+1) % args.print_feq == 0:
                 print(f"Top-{args.topk} Accuracy: {acc}")
                 # ...log the running loss
-                wandb.log({"train loss": loss})
+                if args.log_wandb:
+                    wandb.log({"train loss": loss})
                 
             pbar.set_postfix({'loss': loss})
             pbar.update()
-
-    test_acc = test(encoder_model, args.path_Ab, args.path_Ag, args.test_batch_size)
+    del data_lst
+    del dataloader
+    del contrast_model
+    test_acc = test(encoder_model, args.path_Ab, args.path_Ag)
     print(f"Test Accuracy = {test_acc}")
-    wandb.log({"test accuracy": test_acc})
-#     print(f'(E): Best test F1Mi={test_result["micro_f1"]:.4f}, F1Ma={test_result["macro_f1"]:.4f}')
+    if args.log_wandb:
+        wandb.log({"test accuracy": test_acc})
 
 
 if __name__ == '__main__':
@@ -115,7 +118,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--device', default=device, type=str)
     parser.add_argument('--data_type', default="pdb", choices=["pdb", "swiss_prot"], type=str) 
-    parser.add_argument('--data_path', default="pdb_data.json", type=str) 
+    parser.add_argument('--data_path', default="data/SabDab/train/XAb.json", type=str) 
     parser.add_argument('--walk_length', default=100, type=int)
     parser.add_argument('--pn', default=0.5, type=float, help="prob of dropping nodes")
     parser.add_argument('--pf', default=0.5, type=float, help="prob of masking features")
@@ -124,15 +127,16 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', default=32, type=int)
     parser.add_argument('--num_layers', default=8, type=int)
     parser.add_argument('--temperature', default=0.2, type=float)
-    parser.add_argument('--epochs', default=10, type=int, metavar='N',
-                        help='number of total epochs to run')
+    parser.add_argument('--epochs', default=1, type=int, metavar='N',
+                        help='total # of epochs to run')
     parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float)
     parser.add_argument('--topk', default=(1,5), type=tuple)
-    parser.add_argument('--print_feq', default=1, type=int, help="print the accuracy and log the running loss after certain interval")
+    parser.add_argument('--log_wandb', default=False, type=eval, help="log results to wandb")
+    parser.add_argument('--print_feq', default=1, type=int, help="print the accuracy and running loss after certain interval")
     
-    parser.add_argument('--path_Ab', default="data/SabDab/X_Ab.json", type=str)
-    parser.add_argument('--path_Ag', default="data/SabDab/X_Ag.json", type=str)
-    parser.add_argument('--test_batch_size', default=10, type=int)
+    parser.add_argument('--path_Ab', default="data/SabDab/train/XAb.json", type=str)
+    parser.add_argument('--path_Ag', default="data/SabDab/train/XAg.json", type=str)
+    parser.add_argument('--test_batch_size', default=7, type=int)
     args = parser.parse_args()
     
     # find data length 
@@ -155,5 +159,6 @@ if __name__ == '__main__':
     
     del X
     
-    wandb.init(config=config, project="Pretrain-GNN", entity="harsh1729")
+    if args.log_wandb:
+        wandb.init(config=config, project="Pretrain-GNN", entity="harsh1729")
     main()
