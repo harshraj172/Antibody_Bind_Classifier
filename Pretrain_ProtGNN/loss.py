@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 import torch.nn.functional as F
 from GCL.losses import *
 from utils import *
@@ -19,3 +20,13 @@ class InfoNCE(Loss):
         # Accuracy
         acc = accuracy(sim, topk)
         return -loss.mean(), acc[0]
+
+# Loss function
+def BinaryClass_Loss(pred, target, use_mean=True):
+    criterion, eps = nn.BCEWithLogitsLoss(), 1e-10
+    l1_loss = criterion(pred+eps, target)
+    l2_loss = torch.sum(torch.abs(pred - target))
+    if use_mean:
+        l2_loss /= pred.shape[0]
+
+    return l1_loss, l2_loss
