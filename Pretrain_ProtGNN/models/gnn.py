@@ -7,8 +7,6 @@ from torch_geometric.nn import GINConv, global_add_pool, GINEConv
 # from tape import ProteinBertModel, TAPETokenizer
 from transformers import BertModel
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 def make_gine_conv(node_dim, edge_dim, out_dim):
     return GINEConv(nn=nn.Sequential(nn.Linear(node_dim, out_dim), nn.ReLU(), nn.Linear(out_dim, out_dim)), edge_dim=edge_dim)
 
@@ -66,10 +64,9 @@ class DualEncoder(torch.nn.Module):
         self.encoderAB = encoderAB
         self.encoderAG = encoderAG
         
-    def forward(self, xAB, edge_indexAB, edge_attrAB, batchAB,\
-                xAG, edge_indexAG, edge_attrAG, batchAG):
-        zAB, gAB = self.encoderAB(xAB, edge_indexAB, edge_attrAB, batchAB)
-        zAG, gAG = self.encoderAG(xAG, edge_indexAG, edge_attrAG, batchAG)
+    def forward(self, GAB, GAG):
+        zAB, gAB = self.encoderAB(GAB.x, GAB.edge_index, GAB.edge_attr, GAB.batch)
+        zAG, gAG = self.encoderAG(GAG.x, GAG.edge_index, GAG.edge_attr, GAG.batch)
         
         return zAB, zAG, gAB, gAG
     
@@ -94,4 +91,27 @@ class SeqEncoder(torch.nn.Module):
     def forward(self, token_ids):
         output = self.model(token_ids)['pooler_output']
         h = self.project(output)
-        return h 
+        return h
+    
+class StructSeqEnc(torch.nn.Module):
+    def __init__(self, struct_enc, seq_enc,\
+                 use_struct=True, use_seq=False):
+        super(StructSeqEnc, self).__init__()
+        self.struct_enc = struct_enc
+        self.seq_enc = seq_enc
+        self.use_struct = use_struct
+        self.use_seq = use_seq
+        
+    def forward(self, GAB, GAG, tokenAB, tokenAG):
+        h1, h2 = torch.zeros((tokenAB.size(0), 1)).cuda(), torch.zeros((tokenAG.size(0), 1)).cuda()
+        if self.use_struct:
+            zAB, zAG, gAB, gAG = self.struct_enc(GAB, GAG)
+            gAB = self.struct_enc.encoderAB.project(gAB)
+            gAG = self.struct_enc.encoderAG.project(gAG)
+            h1 = torch.diag(torch.matmul(gAB, gAG.permute(1, 0))).unsqueeze(-1)        
+        if self.use_seq:
+            sAB, sAG = self.seq_enc(tokenAB), self.seq_enc(tokenAG)
+            h2 = torch.diag(torch.matmul(sAB, sAG.permute(1, 0))).unsqueeze(-1)
+        
+        h = torch.mean(torch.cat((h1,h2), dim=1), dim=1, keepdim=True)
+        return h
