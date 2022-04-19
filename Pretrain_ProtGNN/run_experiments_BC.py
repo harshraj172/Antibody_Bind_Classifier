@@ -24,48 +24,28 @@ import utils
 from transformers import BertTokenizer
 
 
-def train(encoder_model, seq_encoder, use_struct, use_seq, tokenizer,\
-          dataloaderAB, dataloaderAG, optimizer1, optimizer2, device1, device2):
-    if use_struct:
-        encoder_model.train()
-    if use_seq:
-        seq_encoder.train()
+def train(model, tokenizer, dataloaderAB, dataloaderAG, optimizer, device_ids):
+    model.train()
+    
     epoch_loss = 0
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for (dataAB, dataAG) in zip(cycle(dataloaderAB), dataloaderAG):
         (GAB, seqAB, y) = dataAB
         (GAG, seqAG, y) = dataAG
-        y = y.reshape(-1, 1).to(torch.float32).to(device1)
+        tokenAB, tokenAG = tokenize(seqAB, tokenizer), tokenize(seqAG, tokenizer)
+        y = y.reshape(-1, 1).to(torch.float32)
         
-        h1, h2 = torch.zeros((y.size(0), 1)).to(device1), torch.zeros((y.size(0), 1)).to(device2)
-        if use_struct:
-            GAB = GAB.to(device1)
-            GAG = GAG.to(device1)
-            optimizer1.zero_grad()
-            
-            zAB, zAG, gAB, gAG = encoder_model(GAB.x, GAB.edge_index, GAB.edge_attr, GAB.batch,\
-                                               GAG.x, GAG.edge_index, GAG.edge_attr, GAG.batch)
-            gAB = encoder_model.encoderAB.project(gAB)
-            gAG = encoder_model.encoderAG.project(gAG)
-            h1 = torch.diag(torch.matmul(gAB, gAG.permute(1, 0))).unsqueeze(-1)
-        if use_seq:
-            optimizer2.zero_grad()
-            
-            tokenAB, tokenAG = tokenize(seqAB, tokenizer), tokenize(seqAG, tokenizer)
-            tokenAB, tokenAG = tokenAB.to(device2), tokenAG.to(device2) 
-            sAB, sAG = seq_encoder(tokenAB), seq_encoder(tokenAG)
-            h2 = torch.diag(torch.matmul(sAB, sAG.permute(1, 0))).unsqueeze(-1)
-            
-            h2.to(device1)
-
-        pred = torch.mean(torch.cat((h1,h2), dim=1), dim=1, keepdim=True)
+        optimizer.zero_grad()
+        
+        pred = data_parallel(module=model, input=(GAB.cuda(), GAG.cuda(), tokenAB.cuda(), tokenAG.cuda()),\
+                             device_ids=device_ids)
+        # pred = model(GAB, GAG, tokenAB, tokenAG)
+        pred = pred.to("cpu")
+        
         loss, __ = BinaryClass_Loss(pred, y)
         
         loss.backward()
-        if use_struct:
-            optimizer1.step()
-        if use_seq:
-            optimizer2.step()
+        optimizer.step()
 
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
@@ -77,46 +57,29 @@ def train(encoder_model, seq_encoder, use_struct, use_seq, tokenizer,\
     return epoch_loss/len(dataloaderAB), result_df
 
 
-def test(encoder_model, seq_encoder, use_struct, use_seq,\
-         tokenizer, dataloaderAB, dataloaderAG, device1, device2):
-    if use_struct:
-        encoder_model.eval()
-    if use_seq:
-        seq_encoder.eval()
+def test(model, tokenizer, dataloaderAB, dataloaderAG, device_ids):
+    model.eval()
     
-    with torch.no_grad():
-        epoch_loss = 0
-        Y_true, Y_pred = torch.tensor([]), torch.tensor([])
-        for (dataAB, dataAG) in zip(cycle(dataloaderAB), dataloaderAG):
-            (GAB, seqAB, y) = dataAB
-            (GAG, seqAG, y) = dataAG
-            y = y.reshape(-1, 1).to(torch.float32).to(device1)
+    epoch_loss = 0
+    Y_true, Y_pred = torch.tensor([]), torch.tensor([])
+    for (dataAB, dataAG) in zip(cycle(dataloaderAB), dataloaderAG):
+        (GAB, seqAB, y) = dataAB
+        (GAG, seqAG, y) = dataAG
+        tokenAB, tokenAG = tokenize(seqAB, tokenizer), tokenize(seqAG, tokenizer)
+        y = y.reshape(-1, 1).to(torch.float32)
 
-            h1, h2 = torch.zeros((y.size(0), 1)).to(device1), torch.zeros((y.size(0), 1)).to(device2)
-            if use_struct:
-                GAB = GAB.to(device1)
-                GAG = GAG.to(device1)
-                zAB, zAG, gAB, gAG = encoder_model(GAB.x, GAB.edge_index, GAB.edge_attr, GAB.batch,\
-                                                   GAG.x, GAG.edge_index, GAG.edge_attr, GAG.batch)
-                gAB = encoder_model.encoderAB.project(gAB)
-                gAG = encoder_model.encoderAG.project(gAG)
-                h1 = torch.diag(torch.matmul(gAB, gAG.permute(1, 0))).unsqueeze(-1)
-            if use_seq:
-                tokenAB, tokenAG = tokenize(seqAB, tokenizer), tokenize(seqAG, tokenizer)
-                tokenAB, tokenAG = tokenAB.to(device2), tokenAG.to(device2) 
-                sAB, sAG = seq_encoder(tokenAB), seq_encoder(tokenAG)
-                h2 = torch.diag(torch.matmul(sAB, sAG.permute(1, 0))).unsqueeze(-1)
-                
-                h2.to(device1)
+        pred = data_parallel(module=model, input=(GAB.cuda(), GAG.cuda(), tokenAB.cuda(), tokenAG.cuda()),\
+                             device_ids=device_ids)  
+        pred = pred.to("cpu")
+        # pred = model(GAB, GAG, tokenAB, tokenAG)
+        
+        loss, __ = BinaryClass_Loss(pred, y)
 
-            pred = torch.mean(torch.cat((h1,h2), dim=1), dim=1, keepdim=True)
-            loss, __ = BinaryClass_Loss(pred, y)
-            
-            # for evaluation
-            Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
-            Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
-
-            epoch_loss += loss.item()
+        # for evaluation
+        Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
+        Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
+        
+        epoch_loss += loss.item()
             
     result_df = metric(Y_pred.view(-1), Y_true.long().view(-1))
     return epoch_loss/len(dataloaderAB), result_df
@@ -126,8 +89,7 @@ def main(
     # data params
     train_data_dir="data/SabDab/train",
     test_data_dir="data/SabDab/test",
-    device1="cuda:0",
-    device2="cuda:0",
+    device_ids="[0]",
     # trainer params
     batch_size=32,
     test_batch_size=10,
@@ -135,7 +97,6 @@ def main(
     epochs=50,
     early_stopping="valid_loss",
     # optimizer params
-    optimizer="adamw",
     weight_decay=7.459343285726558e-05,
     learning_rate_scheduler="cosine",
     # model params
@@ -143,7 +104,7 @@ def main(
     use_seq=False,
     pretrained_lm_model="Rostlab/prot_bert",
     hidden_dim=128,
-    num_layers=12,
+    num_layers=9,
     temperature=0.2,
     # experiment params
     log_wandb=True,
@@ -168,7 +129,9 @@ def main(
         del X
         
         wandb.init(config=config, project="Bind CLassifier--GINECONV", entity="harsh1729")
-        
+    
+    device_ids = [int(id) for id in device_ids.strip('][').split(', ')]
+    
     # preparing the data 
     train_data_lstAB, train_data_lstAG = prepare_dataABAG(f'{train_data_dir}/XAb.json', f'{train_data_dir}/XAg.json')
     train_loaderAB = DataLoader(train_data_lstAB[:200], batch_size=batch_size, shuffle=True)
@@ -186,28 +149,26 @@ def main(
     test_loaderAG = DataLoader(test_data_lstAG[-200:], batch_size=test_batch_size, shuffle=True)
     del test_data_lstAG
     
-    # Structure Model
-    gconvAB = GConv(node_dim=node_dim, edge_dim=edge_dim, hidden_dim=hidden_dim, num_layers=num_layers).to(device1)
-    gconvAG = GConv(node_dim=node_dim, edge_dim=edge_dim, hidden_dim=hidden_dim, num_layers=num_layers).to(device1)
-    encoder_model = DualEncoder(encoderAB=gconvAB, encoderAG=gconvAG).to(device1)
+    # structure model
+    gconvAB = GConv(node_dim=node_dim, edge_dim=edge_dim, hidden_dim=hidden_dim, num_layers=num_layers)
+    gconvAG = GConv(node_dim=node_dim, edge_dim=edge_dim, hidden_dim=hidden_dim, num_layers=num_layers)
+    encoder_model = DualEncoder(encoderAB=gconvAB, encoderAG=gconvAG)
     
-    # Sequence Model
-    seq_encoder = SeqEncoder().to(device2)
+    # sequence model
+    seq_encoder = SeqEncoder()
     tokenizer = BertTokenizer.from_pretrained(pretrained_lm_model, do_lower_case=False)
     
-    if optimizer=="adamw":
-        optimizer1 = optim.AdamW(encoder_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
-        optimizer2 = optim.AdamW(seq_encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    if optimizer=="adam":
-        optimizer1 = optim.Adam(encoder_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
-        optimizer2 = optim.Adam(seq_encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # combined model
+    structseq_enc = StructSeqEnc(struct_enc=encoder_model, seq_enc=seq_encoder,\
+                                use_struct=use_struct, use_seq=use_seq).cuda() 
+    
+    optimizer = optim.AdamW(structseq_enc.parameters(), lr=learning_rate, weight_decay=weight_decay)
     
     # training
     with tqdm(total=epochs-1, desc='(T)') as pbar:
         for epoch in range(epochs):
-            train_loss, train_result_df = train(encoder_model, seq_encoder, use_struct, use_seq,\
-                                                tokenizer, train_loaderAB, train_loaderAG,\
-                                                optimizer1, optimizer2, device1, device2)
+            train_loss, train_result_df = train(structseq_enc, tokenizer, train_loaderAB,\
+                                                train_loaderAG, optimizer, device_ids)
             if log_wandb:
                 wandb.log({"train BCE loss": train_loss,
                            "train precision": train_result_df['Precision'][0],
@@ -218,8 +179,7 @@ def main(
             pbar.update()
     
     # testing
-    test_loss, test_result_df = test(encoder_model, seq_encoder, use_struct, use_seq,\
-                                     tokenizer, test_loaderAB, test_loaderAG, device1, device2)
+    test_loss, test_result_df = test(structseq_enc, tokenizer, test_loaderAB, test_loaderAG, device_ids)
     print(f"Test Loss = {test_loss}")
     if log_wandb:
         wandb.log({"test BCE loss": test_loss,
@@ -228,3 +188,5 @@ def main(
                    "test F1 score": test_result_df['F1 Score'][0]})
     
     return test_result_df['F1 Score'][0]
+
+main()
