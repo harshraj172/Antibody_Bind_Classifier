@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm 
 import torch
+from torch import nn
 import torch.nn.functional as F
 from torch_geometric.data import Data
 
@@ -13,6 +14,19 @@ except:
     from structgen import protein_features
     
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def data_parallel(module, input, device_ids=["cuda:0"], output_device="cpu"):
+    if not device_ids:
+        return module(input)
+
+    if output_device is None:
+        output_device = device_ids[0]
+
+    replicas = nn.parallel.replicate(module, device_ids)
+    inputs = nn.parallel.scatter(input, device_ids)
+    replicas = replicas[:len(inputs)]
+    outputs = nn.parallel.parallel_apply(replicas, inputs)
+    return nn.parallel.gather(outputs, output_device)
 
 def read_json(path):
     with open(path, 'r') as f:
@@ -148,11 +162,11 @@ def _similarity(h1: torch.Tensor, h2: torch.Tensor):
 
 def accuracy(sim, topk=(1,5)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
-    mask = torch.eye(sim.shape[0], dtype=torch.bool).to(device)
+    mask = torch.eye(sim.shape[0], dtype=torch.bool)
     neg = sim[~mask].view(sim.shape[0], -1)
     pos = sim[mask].view(sim.shape[0], -1)
     output = torch.cat([pos, neg], dim=1)
-    target = torch.zeros(output.shape[0], dtype=torch.long).to(device)
+    target = torch.zeros(output.shape[0], dtype=torch.long)
     
     with torch.no_grad():
         batch_size = target.size(0)
