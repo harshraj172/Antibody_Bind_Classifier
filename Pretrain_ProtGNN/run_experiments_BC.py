@@ -188,5 +188,3 @@ def main(
                    "test F1 score": test_result_df['F1 Score'][0]})
     
     return test_result_df['F1 Score'][0]
-
-main()
