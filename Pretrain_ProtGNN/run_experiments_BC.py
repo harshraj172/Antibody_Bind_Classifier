@@ -42,7 +42,7 @@ def train(model, tokenizer, dataloaderAB, dataloaderAG, optimizer, device_ids):
         # pred = model(GAB, GAG, tokenAB, tokenAG)
         pred = pred.to("cpu")
         
-        loss, __ = BinaryClass_Loss(pred, y)
+        loss = BinaryClass_Loss(pred, y)
         
         loss.backward()
         optimizer.step()
@@ -73,7 +73,7 @@ def val(model, tokenizer, dataloaderAB, dataloaderAG, device_ids):
         pred = pred.to("cpu")
         # pred = model(GAB, GAG, tokenAB, tokenAG)
         
-        loss, __ = BinaryClass_Loss(pred, y)
+        loss = BinaryClass_Loss(pred, y)
 
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
@@ -100,7 +100,7 @@ def test(model, tokenizer, dataloaderAB, dataloaderAG, device_ids):
         pred = pred.to("cpu")
         # pred = model(GAB, GAG, tokenAB, tokenAG)
         
-        loss, __ = BinaryClass_Loss(pred, y)
+        loss = BinaryClass_Loss(pred, y)
 
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
