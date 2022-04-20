@@ -148,8 +148,8 @@ def prepare_dataABAG(pathAB, pathAG):
 
         # Appending 
         data_lstAB.append((dataAB_1, seqAB_1, torch.tensor([1])))
-        data_lstAB.append((dataAB_2, seqAB_1, torch.tensor([0])))
         data_lstAG.append((dataAG_1, seqAG_1, torch.tensor([1])))
+        data_lstAB.append((dataAB_2, seqAB_1, torch.tensor([0])))
         data_lstAG.append((dataAG_2, seqAG_2, torch.tensor([0])))
         sample_idx += 1
         # except:pass
