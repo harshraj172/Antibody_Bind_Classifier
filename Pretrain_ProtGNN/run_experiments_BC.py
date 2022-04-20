@@ -223,12 +223,12 @@ def main(
             scheduler.step(val_loss)
                 
         # testing
-        val_loss, val_result_df = val(structseq_enc, tokenizer, val_loaderAB, val_loaderAG, device_ids)
-        print(f"val Loss = {val_loss}")
+        test_loss, test_result_df = test(structseq_enc, tokenizer, val_loaderAB, val_loaderAG, device_ids)
+        print(f"test Loss = {test_loss}")
         if log_wandb:
-            wandb.log({"val BCE loss": val_loss,
-                       "val precision": val_result_df['Precision'][0],
-                       "val recall": val_result_df['Recall'][0], 
-                       "val F1 score": val_result_df['F1 Score'][0]})
+            wandb.log({"test BCE loss": test_loss,
+                       "test precision": test_result_df['Precision'][0],
+                       "test recall": test_result_df['Recall'][0], 
+                       "test F1 score": test_result_df['F1 Score'][0]})
     
     return test_result_df['F1 Score'][0]
