@@ -24,6 +24,7 @@ def objective(trial):
     f1_score = main(
                     # data params
                     train_data_dir=args.train_data_dir,
+                    val_data_dir=args.val_data_dir,
                     test_data_dir=args.test_data_dir,
                     device_ids=args.device_ids,
                     # trainer params
@@ -50,6 +51,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tuning Binary Classifer')
 
     parser.add_argument('--train_data_dir', default="data/SabDab/train", type=str)
+    parser.add_argument('--val_data_dir', default="data/SabDab/val", type=str)
     parser.add_argument('--test_data_dir', default="data/SabDab/test", type=str)
     parser.add_argument('--device_ids', default="[0]", type=str)
     
