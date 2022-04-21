@@ -15,69 +15,83 @@ import wandb
 from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from dataset import _Antibody_Antigen_Dataset_
 
+from dataset import Antibody_Antigen_Dataset
 import models as models
+from models import *
 from glob_utils import *
 
 def to_np(x):
     return x.cpu().detach().numpy()
 
-def train_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, optimizer, scheduler, FLAGS):
+def train_epoch(epoch, model, criterion, dataloader, optimizer, scheduler, FLAGS):
     model.train()
   
     num_iters = len(dataloader)
+    rloss = 0
+    Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
-        hAB, hAG = torch.tensor([0]), torch.tensor([0])
-        if FLAGS.use_seq:
-            hAB, hAG = seq_emb.pretrained_emb(seqAB), seq_emb.pretrained_emb(seqAG)
-        hAB = hAB.to(FLAGS.device)
-        hAG = hAG.to(FLAGS.device)
+        tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
+        tokenAB = tokenAB.cuda()
+        tokenAG = tokenAG.cuda()
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
-        y = y.to(FLAGS.device)
+        y = y.cuda()
 
         optimizer.zero_grad()
 
         # run model forward and compute loss
-        pred = model(gAB, hAB, gAG, hAG)
+        pred = model(gAB, tokenAB, gAG, tokenAG)
     
-        l1_loss, __ = loss_fnc(pred, y, criterion)
-
+        loss = criterion(pred, y)
+        rloss += loss
+        
         # backprop
-        l1_loss.backward()
+        loss.backward()
         optimizer.step()
 
         if i % FLAGS.print_interval == 0:
-            print(f"[{epoch}|{i}] L1 Loss: {l1_loss:.5f}")
+            print(f"[{epoch}|{i}] train Loss/step: {loss:.5f}")
         if FLAGS.use_wandb:
             if i % FLAGS.log_interval == 0:
-                wandb.log({"Train L1 loss": to_np(l1_loss)})
+                wandb.log({"train loss/step": to_np(loss)})
 
         if FLAGS.profile and i == 10:
             sys.exit()
 
         scheduler.step(epoch + i / num_iters)
 
-def val_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
+        # for evaluation
+        Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
+        Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
+    rloss /= FLAGS.train_size
+    results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
+    
+    print(f"...[{epoch}|train] Loss: {rloss:.5f} [units]")
+    print(results_df)
+    if FLAGS.use_wandb:
+        wandb.log({"train BCE loss": to_np(rloss),
+                   "train precision": results_df['Precision'][0],
+                   "train recall": results_df['Recall'][0], 
+                   "train F1 Score": results_df['F1 Score'][0]})
+
+def val_epoch(epoch, loss_fnc, criterion, dataloader, FLAGS):
     model.eval()
 
     rloss = 0
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
-        hAB, hAG = torch.tensor([0]), torch.tensor([0])
-        if FLAGS.use_seq:
-            hAB, hAG = seq_emb.pretrained_emb(seqAB), seq_emb.pretrained_emb(seqAG)
-        hAB = hAB.to(FLAGS.device)
-        hAG = hAG.to(FLAGS.device)
+        tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
+        tokenAB = tokenAB.cuda()
+        tokenAG = tokenAG.cuda()
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
-        y = y.to(FLAGS.device)
+        y = y.cuda()
 
         # run model forward and compute loss
-        pred = model(gAB, hAB, gAG, hAG).detach()
-        l1_loss, __ = loss_fnc(pred, y, criterion, use_mean=False)
-        rloss += l1_loss
+        pred = model(gAB, tokenAB, gAG, tokenAG).detach()
+        loss = criterion(pred, y)
+        rloss += loss
         
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
@@ -85,34 +99,31 @@ def val_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
     rloss /= FLAGS.val_size
     results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
-    print(f"...[{epoch}|val] L1 Loss: {rloss:.5f} [units]")
+    print(f"...[{epoch}|val] Loss: {rloss:.5f} [units]")
     print(results_df)
     if FLAGS.use_wandb:
-        wandb.log({"val L1 loss": to_np(rloss),
-                   "val_precision": results_df['Precision'][0],
-                   "val_recall": results_df['Recall'][0], 
-                   "val_F1_score": results_df['F1 Score'][0], 
-                   "val_L1_loss": to_np(rloss)})
+        wandb.log({"val BCE loss": to_np(rloss),
+                   "val precision": results_df['Precision'][0],
+                   "val recall": results_df['Recall'][0], 
+                   "val F1 score": results_df['F1 Score'][0]})
 
-def test_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
+def test_epoch(epoch, model, loss_fnc, criterion, dataloader, FLAGS):
     model.eval()
 
     rloss = 0
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
-        hAB, hAG = torch.tensor([0]), torch.tensor([0])
-        if FLAGS.use_seq:
-            hAB, hAG = seq_emb.pretrained_emb(seqAB), seq_emb.pretrained_emb(seqAG)
-        hAB = hAB.to(FLAGS.device)
-        hAG = hAG.to(FLAGS.device)
+        tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
+        tokenAB = tokenAB.cuda()
+        tokenAG = tokenAG.cuda()
         gAB = gAB.to(FLAGS.device)
         gAG = gAG.to(FLAGS.device)
-        y = y.to(FLAGS.device)
+        y = y.cuda()
 
         # run model forward and compute loss
         pred = model(gAB, hAB, gAG, hAG).detach()
-        l1_loss, __ = loss_fnc(pred, y, criterion, use_mean=False)
-        rloss += l1_loss
+        loss = criterion(pred, y)
+        rloss += loss
         
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
@@ -120,70 +131,66 @@ def test_epoch(epoch, model, seq_emb, loss_fnc, criterion, dataloader, FLAGS):
     rloss /= FLAGS.test_size
     results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
-    print(f"...[{epoch}|test] L1 Loss: {rloss:.5f} [units]")
+    print(f"...[{epoch}|test] Loss: {rloss:.5f} [units]")
     print(results_df)
     if FLAGS.use_wandb:
-        wandb.log({"test L1 loss": to_np(rloss),
-                   "test_precision": results_df['Precision'][0],
-                   "test_recall": results_df['Recall'][0], 
-                   "test_F1_Score": results_df['F1 Score'][0], 
-                   "test_L1_loss": to_np(rloss)})
+        wandb.log({"test BCE loss": to_np(rloss),
+                   "test precision": results_df['Precision'][0],
+                   "test recall": results_df['Recall'][0], 
+                   "test F1 Score": results_df['F1 Score'][0]})
 
 
 def collate(samples):
     structseqAB_lst, structseqAG_lst, y = map(list, zip(*samples))
     batched_graphAB = dgl.batch([s['struct'] for s in structseqAB_lst])
     batched_graphAG = dgl.batch([s['struct'] for s in structseqAG_lst])
-    seqAB_lst = [('protein', s['seq'][:1017]) for s in structseqAB_lst]
-    seqAG_lst = [('protein', s['seq'][:1017]) for s in structseqAG_lst]
+    seqAB_lst = [s['seq'] for s in structseqAB_lst]
+    seqAG_lst = [s['seq'] for s in structseqAG_lst]
     return batched_graphAB, seqAB_lst, batched_graphAG, seqAG_lst, torch.tensor(y)
 
 
 def main(FLAGS, UNPARSED_ARGV):
 
     # Prepare data
-    train_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.train_data_dir}/XAb.json', f'{FLAGS.train_data_dir}/XAg.json')
+    train_dataset = Antibody_Antigen_Dataset(f'{FLAGS.train_data_dir}/XAb.json', f'{FLAGS.train_data_dir}/XAg.json')
     train_loader = DataLoader(train_dataset, 
                               batch_size=FLAGS.batch_size, 
                               shuffle=True, 
                               collate_fn=collate, 
                               num_workers=FLAGS.num_workers)
 
-    val_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
-    val_loader = DataLoader(val_dataset, 
-                            batch_size=FLAGS.batch_size, 
-                            shuffle=False, 
-                            collate_fn=collate, 
-                            num_workers=FLAGS.num_workers)
+#     val_dataset = Antibody_Antigen_Dataset(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
+#     val_loader = DataLoader(val_dataset, 
+#                             batch_size=FLAGS.batch_size, 
+#                             shuffle=False, 
+#                             collate_fn=collate, 
+#                             num_workers=FLAGS.num_workers)
 
-    test_dataset = _Antibody_Antigen_Dataset_(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
-    test_loader = DataLoader(test_dataset, 
-                             batch_size=FLAGS.batch_size, 
-                             shuffle=False, 
-                             collate_fn=collate, 
-                             num_workers=FLAGS.num_workers)
+#     test_dataset = Antibody_Antigen_Dataset(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
+#     test_loader = DataLoader(test_dataset, 
+#                              batch_size=FLAGS.batch_size, 
+#                              shuffle=False, 
+#                              collate_fn=collate, 
+#                              num_workers=FLAGS.num_workers)
 
     FLAGS.train_size = len(train_dataset)
-    FLAGS.val_size = len(val_dataset)
-    FLAGS.test_size = len(test_dataset)
+    # FLAGS.val_size = len(val_dataset)
+    # FLAGS.test_size = len(test_dataset)
 
     # Choose model
-    seq_emb = 0
-    if FLAGS.use_seq:
-        seq_emb = models.get_SeqEmb(FLAGS.pretrained_lm_model)
     model = models.__dict__.get(FLAGS.model)(FLAGS.use_struct, 
                                              FLAGS.use_seq,
                                              FLAGS.num_layers, 
                                              train_dataset.node_feature_size, 
                                              train_dataset.edge_feature_size,
-                                             FLAGS.pretrained_lm_model, 
-                                             FLAGS.pretrained_lm_emb_dim,
                                              num_channels=FLAGS.num_channels,
                                              num_nlayers=FLAGS.num_nlayers,
                                              num_degrees=FLAGS.num_degrees,
                                              div=FLAGS.div,
                                              pooling=FLAGS.pooling,
-                                             n_heads=FLAGS.head)
+                                             n_heads=FLAGS.head,
+                                             pretrained_lm_model=FLAGS.pretrained_lm_model, 
+                                             pretrained_lm_dim=FLAGS.pretrained_lm_dim)
 
 
     if FLAGS.restore is not None:
@@ -192,11 +199,11 @@ def main(FLAGS, UNPARSED_ARGV):
     #wandb.watch(model)
 
     # Optimizer settings
-    optimizer = optim.Adam(model.parameters(), lr=FLAGS.lr)
-    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 
-                                                               FLAGS.num_epochs, 
-                                                               eta_min=1e-4)
-    criterion = torch.nn.BCEWithLogitsLoss()
+    optimizer = optim.AdamW(model.parameters(), lr=FLAGS.lr)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
+    
+    # Loss
+    criterion = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
     # Save path
     save_path = os.path.join(FLAGS.save_dir, FLAGS.name + '.pt')
@@ -207,9 +214,9 @@ def main(FLAGS, UNPARSED_ARGV):
         torch.save(model.state_dict(), save_path)
         print(f"Saved: {save_path}")
 
-        train_epoch(epoch, model, seq_emb, task_loss, criterion, train_loader, optimizer, scheduler, FLAGS)
-        val_epoch(epoch, model, seq_emb, task_loss, criterion, val_loader, FLAGS)
-        test_epoch(epoch, model, seq_emb, task_loss, criterion, test_loader, FLAGS)
+        train_epoch(epoch, model, criterion, train_loader, optimizer, scheduler, FLAGS)
+        # val_epoch(epoch, model, criterion, val_loader, FLAGS)
+        # test_epoch(epoch, model, criterion, test_loader, FLAGS)
 
         
 if __name__ == '__main__':
@@ -221,11 +228,11 @@ if __name__ == '__main__':
             help="Use structure info of protein")
     
     # Model parameters
-    parser.add_argument('--model', type=str, default='StructSeqNet', 
+    parser.add_argument('--model', type=str, default='StructSeqEnc', 
             help="String name of model")
-    parser.add_argument('--pretrained_lm_model', type=str, default='esm1b_t33_650M_UR50S',
+    parser.add_argument('--pretrained_lm_model', type=str, default="Rostlab/prot_bert",
             help="Pretrained LM model name")
-    parser.add_argument('--pretrained_lm_emb_dim', type=int, default=1280,
+    parser.add_argument('--pretrained_lm_dim', type=int, default=1024,
             help="Pretrained LM model out dim")
     
     parser.add_argument('--num_layers', type=int, default=1,
@@ -250,7 +257,7 @@ if __name__ == '__main__':
             help="Batch size")
     parser.add_argument('--lr', type=float, default=1e-3, 
             help="Learning rate")
-    parser.add_argument('--num_epochs', type=int, default=1, 
+    parser.add_argument('--num_epochs', type=int, default=10, 
             help="Number of epochs")
 
     # Data
