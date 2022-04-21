@@ -159,23 +159,23 @@ def main(FLAGS, UNPARSED_ARGV):
                               collate_fn=collate, 
                               num_workers=FLAGS.num_workers)
 
-#     val_dataset = Antibody_Antigen_Dataset(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
-#     val_loader = DataLoader(val_dataset, 
-#                             batch_size=FLAGS.batch_size, 
-#                             shuffle=False, 
-#                             collate_fn=collate, 
-#                             num_workers=FLAGS.num_workers)
+    val_dataset = Antibody_Antigen_Dataset(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
+    val_loader = DataLoader(val_dataset, 
+                            batch_size=FLAGS.batch_size, 
+                            shuffle=False, 
+                            collate_fn=collate, 
+                            num_workers=FLAGS.num_workers)
 
-#     test_dataset = Antibody_Antigen_Dataset(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
-#     test_loader = DataLoader(test_dataset, 
-#                              batch_size=FLAGS.batch_size, 
-#                              shuffle=False, 
-#                              collate_fn=collate, 
-#                              num_workers=FLAGS.num_workers)
+    test_dataset = Antibody_Antigen_Dataset(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
+    test_loader = DataLoader(test_dataset, 
+                             batch_size=FLAGS.batch_size, 
+                             shuffle=False, 
+                             collate_fn=collate, 
+                             num_workers=FLAGS.num_workers)
 
     FLAGS.train_size = len(train_dataset)
-    # FLAGS.val_size = len(val_dataset)
-    # FLAGS.test_size = len(test_dataset)
+    FLAGS.val_size = len(val_dataset)
+    FLAGS.test_size = len(test_dataset)
 
     # Choose model
     model = models.__dict__.get(FLAGS.model)(FLAGS.use_struct, 
@@ -215,8 +215,8 @@ def main(FLAGS, UNPARSED_ARGV):
         print(f"Saved: {save_path}")
 
         train_epoch(epoch, model, criterion, train_loader, optimizer, scheduler, FLAGS)
-        # val_epoch(epoch, model, criterion, val_loader, FLAGS)
-        # test_epoch(epoch, model, criterion, test_loader, FLAGS)
+        val_epoch(epoch, model, criterion, val_loader, FLAGS)
+        test_epoch(epoch, model, criterion, test_loader, FLAGS)
 
         
 if __name__ == '__main__':
