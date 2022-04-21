@@ -60,8 +60,8 @@ class Antibody_Antigen_Dataset(Dataset):
         return data_lst
 
     def create_data(self):
-        structseq_list_Ab = self.get_structseq_lst(self.X_Ab[:200])
-        structseq_list_Ag = self.get_structseq_lst(self.X_Ag[:200])
+        structseq_list_Ab = self.get_structseq_lst(self.X_Ab)
+        structseq_list_Ag = self.get_structseq_lst(self.X_Ag)
         data_lst = [{'Antibody': {'struct': struct_Ab, 'seq': seq_Ab}, 
                      'Antigen': {'struct': struct_Ag, 'seq': seq_Ag}, 
                      'target': np.asarray([1], dtype=DTYPE)} 
