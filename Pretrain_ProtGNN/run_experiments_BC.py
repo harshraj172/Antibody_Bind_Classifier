@@ -42,7 +42,7 @@ def train(model, tokenizer, dataloaderAB, dataloaderAG, optimizer, device_ids):
         # pred = model(GAB, GAG, tokenAB, tokenAG)
         pred = pred.to("cpu")
         
-        loss = BinaryClass_Loss(pred, y)
+        loss, __ = BinaryClass_Loss(pred, y)
         
         loss.backward()
         optimizer.step()
@@ -73,7 +73,7 @@ def val(model, tokenizer, dataloaderAB, dataloaderAG, device_ids):
         pred = pred.to("cpu")
         # pred = model(GAB, GAG, tokenAB, tokenAG)
         
-        loss = BinaryClass_Loss(pred, y)
+        loss, __ = BinaryClass_Loss(pred, y)
 
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
@@ -100,7 +100,7 @@ def test(model, tokenizer, dataloaderAB, dataloaderAG, device_ids):
         pred = pred.to("cpu")
         # pred = model(GAB, GAG, tokenAB, tokenAG)
         
-        loss = BinaryClass_Loss(pred, y)
+        loss, __ = BinaryClass_Loss(pred, y)
 
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
@@ -223,12 +223,12 @@ def main(
             scheduler.step(val_loss)
                 
         # testing
-        test_loss, test_result_df = test(structseq_enc, tokenizer, val_loaderAB, val_loaderAG, device_ids)
-        print(f"test Loss = {test_loss}")
+        val_loss, val_result_df = val(structseq_enc, tokenizer, val_loaderAB, val_loaderAG, device_ids)
+        print(f"val Loss = {val_loss}")
         if log_wandb:
-            wandb.log({"test BCE loss": test_loss,
-                       "test precision": test_result_df['Precision'][0],
-                       "test recall": test_result_df['Recall'][0], 
-                       "test F1 score": test_result_df['F1 Score'][0]})
+            wandb.log({"val BCE loss": val_loss,
+                       "val precision": val_result_df['Precision'][0],
+                       "val recall": val_result_df['Recall'][0], 
+                       "val F1 score": val_result_df['F1 Score'][0]})
     
     return test_result_df['F1 Score'][0]
