@@ -10,9 +10,10 @@ import copy
 from matplotlib import pyplot as plt
 
 try:
-    from Pretrain_ProtGNN.structgen.utils import gather_edges, gather_nodes, Normalize
-except:
     from structgen.utils import gather_edges, gather_nodes, Normalize
+except:
+    from Pretrain_ProtGNN.structgen.utils import gather_edges, gather_nodes, Normalize
+
 
 class PositionalEncodings(nn.Module):
 
