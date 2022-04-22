@@ -248,28 +248,41 @@ class StructSeqEnc(nn.Module):
         self.use_struct, self.use_seq = use_struct, use_seq
         
         if use_struct:
-            self.Struct_Encoder = SE3Transformer(num_layers, 
-                                                 node_feature_size, 
-                                                 edge_dim,
-                                                 num_channels=num_channels,
-                                                 num_nlayers=num_nlayers,
-                                                 num_degrees=num_degrees,
-                                                 div=div,
-                                                 pooling=pooling,
-                                                 n_heads=n_heads)
+            self.Struct_EncoderAB = SE3Transformer(num_layers, 
+                                                   node_feature_size, 
+                                                   edge_dim,
+                                                   num_channels=num_channels,
+                                                   num_nlayers=num_nlayers,
+                                                   num_degrees=num_degrees,
+                                                   div=div,
+                                                   pooling=pooling,
+                                                   n_heads=n_heads)
+            
+            self.Struct_EncoderAG = SE3Transformer(num_layers, 
+                                                   node_feature_size, 
+                                                   edge_dim,
+                                                   num_channels=num_channels,
+                                                   num_nlayers=num_nlayers,
+                                                   num_degrees=num_degrees,
+                                                   div=div,
+                                                   pooling=pooling,
+                                                   n_heads=n_heads)
         if use_seq:
-            self.Seq_Encoder = SeqEncoder(pretrained_lm_model,
+            self.Seq_EncoderAB = SeqEncoder(pretrained_lm_model,
+                                          pretrained_lm_dim)
+            self.Seq_EncoderAG = SeqEncoder(pretrained_lm_model,
                                           pretrained_lm_dim)
     
     def forward(self, gAB, tokenAB, gAG, tokenAG):
         h1, h2 = torch.zeros(tokenAB.size(0), 1).cuda(), torch.zeros(tokenAG.size(0), 1).cuda()
                                 
         if self.use_struct:
-            gAB, gAG = self.Struct_Encoder(gAB), self.Struct_Encoder(gAG)
+            gAB, gAG = self.Struct_EncoderAB(gAB), self.Struct_EncoderAG(gAG)
             h1 = torch.diag(torch.matmul(gAB, gAG.permute(1, 0))).unsqueeze(-1)
         if self.use_seq:
-            sAB, sAG = self.Seq_Encoder(tokenAB), self.Seq_Encoder(tokenAG)
+            sAB, sAG = self.Seq_EncoderAB(tokenAB), self.Seq_EncoderAG(tokenAG)
             h2 = torch.diag(torch.matmul(sAB, sAG.permute(1, 0))).unsqueeze(-1)
         
         h = torch.mean(torch.cat((h1,h2), dim=1), dim=1, keepdim=True)     
+        h = torch.sigmoid(h)
         return h
