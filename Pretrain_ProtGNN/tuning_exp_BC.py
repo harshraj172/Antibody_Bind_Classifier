@@ -75,4 +75,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=3)
+    study.optimize(objective, n_trials=10)
