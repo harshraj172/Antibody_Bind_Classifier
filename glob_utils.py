@@ -1,15 +1,19 @@
 import pandas as pd
+from torch import nn
 import torch 
 
-# Loss function
-def task_loss(pred, target, criterion, use_mean=True):
-    eps = 1e-10
-    l1_loss = criterion(pred+eps, target)
-    l2_loss = torch.sum(torch.abs(pred - target))
-    if use_mean:
-        l2_loss /= pred.shape[0]
+def data_parallel(module, input, device_ids=["0"], output_device="cpu"):
+    if not device_ids:
+        return module(input)
 
-    return l1_loss, l2_loss
+    if output_device is None:
+        output_device = device_ids[0]
+
+    replicas = nn.parallel.replicate(module, device_ids)
+    inputs = nn.parallel.scatter(input, device_ids)
+    replicas = replicas[:len(inputs)]
+    outputs = nn.parallel.parallel_apply(replicas, inputs)
+    return nn.parallel.gather(outputs, output_device)
     
 def metric(y_true:torch.Tensor, y_pred:torch.Tensor, is_training=False) -> torch.Tensor:
     '''Calculate F1 score. Can work with gpu tensors
