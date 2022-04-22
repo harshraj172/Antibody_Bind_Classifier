@@ -106,11 +106,12 @@ class SeqEncoder(torch.nn.Module):
         return h
     
 class StructSeqEnc(torch.nn.Module):
-    def __init__(self, struct_enc, seq_enc,\
+    def __init__(self, struct_enc, seq_encAB, seq_encAG,\
                  use_struct=True, use_seq=False):
         super(StructSeqEnc, self).__init__()
         self.struct_enc = struct_enc
-        self.seq_enc = seq_enc
+        self.seq_encAB = seq_encAB
+        self.seq_encAG = seq_encAG
         self.use_struct = use_struct
         self.use_seq = use_seq
         
@@ -122,7 +123,7 @@ class StructSeqEnc(torch.nn.Module):
             gAG = self.struct_enc.encoderAG.project(gAG)
             h1 = torch.diag(torch.matmul(gAB, gAG.permute(1, 0))).unsqueeze(-1)        
         if self.use_seq:
-            sAB, sAG = self.seq_enc(tokenAB), self.seq_enc(tokenAG)
+            sAB, sAG = self.seq_encAB(tokenAB), self.seq_encAG(tokenAG)
             h2 = torch.diag(torch.matmul(sAB, sAG.permute(1, 0))).unsqueeze(-1)
         
         h = torch.mean(torch.cat((h1,h2), dim=1), dim=1, keepdim=True)
