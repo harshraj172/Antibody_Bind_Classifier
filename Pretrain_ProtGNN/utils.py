@@ -194,6 +194,7 @@ def metric(y_pred:torch.Tensor, y_true:torch.Tensor, is_training=False) -> torch
     torch.Tensor
         `ndim` == 1. 0 <= val <= 1
     '''
+    y_pred = torch.nn.sigmoid(y_pred.view(-1, 1)).reshape(-1)
     
     assert y_true.ndim == 1
     assert y_pred.ndim == 1 
