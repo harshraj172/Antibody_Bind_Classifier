@@ -5,7 +5,6 @@ _libgcc_mutex=0.1=conda_forge
 _openmp_mutex=4.5=1_llvm
 absl-py=1.0.0=pypi_0
 alabaster=0.7.12=pypi_0
-alembic=1.7.7=pypi_0
 anyio=3.5.0=pypi_0
 apex=0.1=pypi_0
 appdirs=1.4.4=pypi_0
@@ -14,7 +13,6 @@ argon2-cffi-bindings=21.2.0=pypi_0
 asttokens=2.0.5=pyhd8ed1ab_0
 attrs=18.2.0=pypi_0
 audioread=2.1.9=pypi_0
-autopage=0.5.0=pypi_0
 babel=2.9.1=pypi_0
 backcall=0.2.0=pyh9f0ad1d_0
 backports=1.0=py_2
@@ -23,8 +21,8 @@ beautifulsoup4=4.10.0=pyha770c72_0
 biopython=1.79=pypi_0
 black=22.1.0=pyhd8ed1ab_0
 bleach=4.1.0=pypi_0
-boto3=1.21.42=pypi_0
-botocore=1.24.42=pypi_0
+boto3=1.21.45=pypi_0
+botocore=1.24.45=pypi_0
 brotlipy=0.7.0=py38h497a2fe_1003
 bzip2=1.0.8=h7f98852_4
 c-ares=1.18.1=h7f98852_0
@@ -39,14 +37,10 @@ click=8.0.3=py38h578d9bd_1
 click-completion=0.5.2=pypi_0
 click-didyoumean=0.3.0=pypi_0
 click-help-colors=0.9.1=pypi_0
-cliff=3.10.1=pypi_0
 cloudpickle=2.0.0=pypi_0
-cmaes=0.8.2=pypi_0
 cmake=3.21.3=h8897547_0
-cmd2=2.4.1=pypi_0
 codecov=2.1.12=pypi_0
 colorama=0.4.3=pypi_0
-colorlog=6.6.0=pypi_0
 conda=4.11.0=py38h578d9bd_0
 conda-build=3.21.8=py38h578d9bd_0
 conda-package-handling=1.7.3=py38h497a2fe_1
@@ -93,7 +87,6 @@ gradient=1.10.0=pypi_0
 gradient-utils=0.5.0=pypi_0
 graphql-core=3.1.7=pypi_0
 graphsurgeon=0.4.5=pypi_0
-greenlet=1.1.2=pypi_0
 grpcio=1.43.0=pypi_0
 halo=0.0.31=pypi_0
 heapdict=1.0.1=pypi_0
@@ -108,7 +101,6 @@ iniconfig=1.1.1=pypi_0
 ipykernel=6.9.0=pypi_0
 ipython=8.0.1=py38h578d9bd_0
 ipython-genutils=0.2.0=pypi_0
-ipywidgets=7.7.0=pypi_0
 itsdangerous=2.0.1=pypi_0
 jedi=0.18.1=py38h578d9bd_0
 jinja2=3.0.3=pyhd8ed1ab_0
@@ -118,12 +110,11 @@ json5=0.9.6=pypi_0
 jsonschema=4.4.0=pypi_0
 jupyter-client=7.1.2=pypi_0
 jupyter-core=4.9.1=pypi_0
-jupyter-server=1.15.6=pypi_0
+jupyter-server=1.13.5=pypi_0
 jupyter-tensorboard=0.2.0=pypi_0
-jupyterlab=3.3.2=pypi_0
+jupyterlab=3.2.9=pypi_0
 jupyterlab-pygments=0.1.2=pypi_0
-jupyterlab-server=2.11.2=pypi_0
-jupyterlab-widgets=1.1.0=pypi_0
+jupyterlab-server=2.10.3=pypi_0
 jupytext=1.13.7=pypi_0
 kiwisolver=1.3.2=pypi_0
 krb5=1.19.2=hcc1bbae_3
@@ -162,7 +153,6 @@ log-symbols=0.0.14=pypi_0
 lz4-c=1.9.3=h9c3ff4c_1
 lzo=2.10=h516909a_1000
 magma-cuda110=2.5.2=5
-mako=1.2.0=pypi_0
 markdown=3.3.6=pypi_0
 markdown-it-py=1.1.0=pypi_0
 markupsafe=2.0.1=py38h497a2fe_1
@@ -179,17 +169,16 @@ msgpack=1.0.3=pypi_0
 multidict=6.0.2=pypi_0
 murmurhash=1.0.6=py38h709712a_2
 mypy_extensions=0.4.3=py38h578d9bd_4
-nbclassic=0.3.7=pypi_0
+nbclassic=0.3.5=pypi_0
 nbclient=0.5.11=pypi_0
 nbconvert=6.4.2=pypi_0
-nbformat=5.2.0=pypi_0
+nbformat=5.1.3=pypi_0
 ncurses=6.2=h58526e2_4
 nest-asyncio=1.5.4=pypi_0
 networkx=2.6.3=pypi_0
 ninja=1.10.2=h4bd325d_1
 nltk=3.7=pypi_0
 notebook=6.4.1=pypi_0
-notebook-shim=0.1.0=pypi_0
 numba=0.53.1=py38h8b71fd7_1
 numpy=1.22.2=py38h6ae9a64_0
 nvidia-dali-cuda110=1.10.0=pypi_0
@@ -199,7 +188,6 @@ oauthlib=3.2.0=pypi_0
 onnx=1.10.1=pypi_0
 openblas=0.3.18=pthreads_h4748800_0
 openssl=1.1.1l=h7f98852_0
-optuna=2.10.0=pypi_0
 packaging=21.3=pyhd8ed1ab_0
 pandas=1.3.5=pypi_0
 pandocfilters=1.5.0=pypi_0
@@ -209,7 +197,6 @@ patchelf=0.14.3=h58526e2_0
 pathspec=0.9.0=pyhd8ed1ab_0
 pathtools=0.1.2=pypi_0
 pathy=0.6.1=pyhd8ed1ab_0
-pbr=5.8.1=pypi_0
 pexpect=4.8.0=pyh9f0ad1d_2
 pickleshare=0.7.5=py_1003
 pillow=9.0.0=pypi_0
@@ -221,7 +208,7 @@ polygraphy=0.33.0=pypi_0
 pooch=1.6.0=pypi_0
 preshed=3.0.6=py38h709712a_1
 prettytable=3.1.0=pypi_0
-prody=2.1.0=pypi_0
+prody=2.1.1=pypi_0
 progressbar2=4.0.0=pypi_0
 prometheus-client=0.9.0=pypi_0
 promise=2.3=pypi_0
@@ -249,7 +236,6 @@ pymongo=3.12.3=pypi_0
 pynvml=11.4.1=pypi_0
 pyopenssl=21.0.0=pyhd8ed1ab_0
 pyparsing=3.0.7=pyhd8ed1ab_0
-pyperclip=1.8.2=pypi_0
 pyrsistent=0.18.1=pypi_0
 pysocks=1.7.1=py38h578d9bd_4
 pytest=6.2.5=pypi_0
@@ -311,11 +297,9 @@ sphinxcontrib-jsmath=1.0.1=pypi_0
 sphinxcontrib-qthelp=1.0.3=pypi_0
 sphinxcontrib-serializinghtml=1.1.5=pypi_0
 spinners=0.0.24=pypi_0
-sqlalchemy=1.4.35=pypi_0
 sqlite=3.37.0=h9cd32fc_0
 srsly=2.4.2=py38h709712a_1
 stack_data=0.1.4=pyhd8ed1ab_0
-stevedore=3.5.0=pypi_0
 tabulate=0.8.9=pypi_0
 tape-proteins=0.5=pypi_0
 tblib=1.7.0=pypi_0
@@ -357,7 +341,7 @@ tzdata=2021e=he74cb21_0
 ucx-py=0.21.0a0+37.gbfa0450=pypi_0
 uff=0.6.9=pypi_0
 urllib3=1.26.7=pyhd8ed1ab_0
-wandb=0.12.14=pypi_0
+wandb=0.12.15=pypi_0
 wasabi=0.9.0=pyhd8ed1ab_0
 wcwidth=0.2.5=pyh9f0ad1d_2
 webencodings=0.5.1=pypi_0
@@ -365,7 +349,6 @@ websocket-client=0.57.0=pypi_0
 werkzeug=2.0.3=pypi_0
 wget=3.2=pypi_0
 wheel=0.35.1=pypi_0
-widgetsnbextension=3.6.0=pypi_0
 xgboost=1.5.0=pypi_0
 xz=5.2.5=h516909a_1
 yaml=0.2.5=h516909a_0
