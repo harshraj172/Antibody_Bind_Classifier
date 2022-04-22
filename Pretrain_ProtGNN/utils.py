@@ -100,9 +100,7 @@ def prepare_data(path):
         
 def prepare_dataABAG(pathAB, pathAG):
     XAB = read_json(pathAB)
-    XAB = XAB[:10]
     XAG = read_json(pathAG)
-    XAG = XAG[:10]
     features = ProteinFeatures()
     data_lstAB, data_lstAG, sample_idx = [], [], 0
     print('Preparing Data...')
