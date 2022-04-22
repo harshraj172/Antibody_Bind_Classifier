@@ -24,9 +24,5 @@ class InfoNCE(Loss):
 # Loss function
 def BinaryClass_Loss(pred, target, use_mean=True):
     criterion, eps = nn.BCEWithLogitsLoss(), 1e-10
-    l1_loss = criterion(pred+eps, target)
-    l2_loss = torch.sum(torch.abs(pred - target))
-    if use_mean:
-        l2_loss /= pred.shape[0]
-
-    return l1_loss, l2_loss
+    loss = criterion(pred+eps, target)
+    return loss
