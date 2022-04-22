@@ -188,7 +188,7 @@ def main(
     encoder_model = DualEncoder(encoderAB=gconvAB, encoderAG=gconvAG)
     
     # sequence model
-    seq_encoder = SeqEncoder()
+    seq_encoderAB, seq_encoderAG = SeqEncoder(), SeqEncoder()
     tokenizer = BertTokenizer.from_pretrained(pretrained_lm_model, do_lower_case=False)
     
     # combined model
