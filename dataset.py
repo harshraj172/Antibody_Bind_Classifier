@@ -35,10 +35,10 @@ class Antibody_Antigen_Dataset(Dataset):
             E, E_idx = to_torch_geom(E, E_idx)
 
             # edge distance
-            edge_d = []
-            for src_id, dst_id in zip(np.array(E_idx[0, 0, :]), np.array(E_idx[0, 1, :])):
-                edge_d.append((x_ca[src_id] - x_ca[dst_id]).pow(2).sum(3).sqrt())
-            edge_d = torch.tensor(np.array(edge_d))
+            # edge_d = []
+            # for src_id, dst_id in zip(np.array(E_idx[0, 0, :]), np.array(E_idx[0, 1, :])):
+            #     edge_d.append(x_ca[src_id] - x_ca[dst_id])
+            # edge_d = torch.tensor(np.array(edge_d)).view(-1, 3)
 
             ## dgl graph
             # adjacency = nx.adjacency_matrix(nxGraph)
@@ -52,7 +52,7 @@ class Antibody_Antigen_Dataset(Dataset):
             dglGraph.ndata['f'] = V[0, :, :].unsqueeze(-1)
 
             # add edge features
-            dglGraph.edata['d'] = edge_d
+            dglGraph.edata['d'] = torch.tensor(x_ca[dst] - x_ca[src])
             dglGraph.edata['w'] = E[0, :, :]
 
             data_lst.append((dglGraph, hchain[1]))
