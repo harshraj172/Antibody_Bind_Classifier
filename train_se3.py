@@ -251,8 +251,11 @@ def main(FLAGS,
         print(f"Saved: {save_path}")
 
         train_epoch(epoch, model, criterion, train_loader, optimizer, scheduler, device_ids, FLAGS)
+        del train_loader
         f1_score = val_epoch(epoch, model, criterion, val_loader, device_ids, FLAGS)
+        del val_loader
         test_epoch(epoch, model, criterion, test_loader, device_ids, FLAGS)
+        del test_loader
     
     return f1_score
 
