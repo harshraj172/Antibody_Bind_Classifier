@@ -4,7 +4,6 @@ import re
 import numpy as np
 import torch
 
-import esm
 from dgl.nn.pytorch import GraphConv, NNConv
 from torch import nn
 from torch.nn import functional as F
