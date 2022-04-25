@@ -32,11 +32,11 @@ def train_epoch(epoch, model, criterion, dataloader, optimizer, scheduler, devic
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
-        tokenAB = tokenAB.cuda()
-        tokenAG = tokenAG.cuda()
-        gAB = gAB.to("cuda")
-        gAG = gAG.to("cuda")
-        y = y.cuda()
+        tokenAB = tokenAB.to("cuda: 0")
+        tokenAG = tokenAG.to("cuda: 0")
+        gAB = gAB.to("cuda: 0")
+        gAG = gAG.to("cuda: 0")
+        y = y.to("cuda: 0")
 
         optimizer.zero_grad()
         # run model forward and compute loss
@@ -83,11 +83,11 @@ def val_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
-        tokenAB = tokenAB.cuda()
-        tokenAG = tokenAG.cuda()
-        gAB = gAB.to("cuda")
-        gAG = gAG.to("cuda")
-        y = y.cuda()
+        tokenAB = tokenAB.to("cuda: 0")
+        tokenAG = tokenAG.to("cuda: 0")
+        gAB = gAB.to("cuda: 0")
+        gAG = gAG.to("cuda: 0")
+        y = y.to("cuda: 0")
 
         # run model forward and compute loss
         model_dist = nn.DataParallel(module=model, device_ids=device_ids)
@@ -118,11 +118,11 @@ def test_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
-        tokenAB = tokenAB.cuda()
-        tokenAG = tokenAG.cuda()
-        gAB = gAB.to("cuda")
-        gAG = gAG.to("cuda")
-        y = y.cuda()
+        tokenAB = tokenAB.to("cuda: 0")
+        tokenAG = tokenAG.to("cuda: 0")
+        gAB = gAB.to("cuda: 0")
+        gAG = gAG.to("cuda: 0")
+        y = y.to("cuda: 0")
 
         # run model forward and compute loss
         model_dist = nn.DataParallel(module=model, device_ids=device_ids)
@@ -236,7 +236,7 @@ def main(FLAGS,
 
     if FLAGS.restore is not None:
         model.load_state_dict(torch.load(FLAGS.restore))
-    model = model.cuda()
+    model = model.to("cuda: 0")
     #wandb.watch(model)
 
     # Optimizer settings
