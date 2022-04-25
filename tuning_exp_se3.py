@@ -7,31 +7,31 @@ def objective(trial):
                             "num_channels", "num_nlayers", "div", "pooling", "head"])
     
     # device_ids(str -> list(int))
-    device_ids = [int(k) for k in args.device_ids.strip('][').split(', ')]
+    device_ids = [int(k) for k in FLAGS.device_ids.strip('][').split(', ')]
     
     # Generate the optimizers.
-    lr_range = [float(k) for k in args.lr_range.strip('][').split(', ')]
+    lr_range = [float(k) for k in FLAGS.lr_range.strip('][').split(', ')]
     config["learning_rate"] = trial.suggest_float("lr", lr_range[0], lr_range[1])
     
-    nlayers_range = [int(k) for k in args.nlayers_range.strip('][').split(', ')]
+    nlayers_range = [int(k) for k in FLAGS.nlayers_range.strip('][').split(', ')]
     config["num_layers"] = trial.suggest_int("num_layers", nlayers_range[0], nlayers_range[1])
     
-    ndegrees_range = [int(k) for k in args.ndegrees_range.strip('][').split(', ')]
+    ndegrees_range = [int(k) for k in FLAGS.ndegrees_range.strip('][').split(', ')]
     config["num_degrees"] = trial.suggest_int("num_degrees", ndegrees_range[0], ndegrees_range[1])
     
-    nchannels_range = [int(k) for k in args.nchannels_range.strip('][').split(', ')]
+    nchannels_range = [int(k) for k in FLAGS.nchannels_range.strip('][').split(', ')]
     config["num_channels"] = trial.suggest_int("num_channels", nchannels_range[0], nchannels_range[1])
     
-    nnlayers_range = [int(k) for k in args.nnlayers_range.strip('][').split(', ')]
+    nnlayers_range = [int(k) for k in FLAGS.nnlayers_range.strip('][').split(', ')]
     config["num_nlayers"] = trial.suggest_int("num_nlayers", nnlayers_range[0], nnlayers_range[1])
 
-    div_range = [int(k) for k in args.div_range.strip('][').split(', ')]
+    div_range = [int(k) for k in FLAGS.div_range.strip('][').split(', ')]
     config["div"] = trial.suggest_int("div", div_range[0], div_range[1])
 
-    pool_lst = [str(k) for k in args.pool_lst.strip('][').split(', ')]
+    pool_lst = [str(k) for k in FLAGS.pool_lst.strip('][').split(', ')]
     config["pooling"] = trial.suggest_categorical("pooling", pool_lst)
 
-    head_range = [int(k) for k in args.head_range.strip('][').split(', ')]
+    head_range = [int(k) for k in FLAGS.head_range.strip('][').split(', ')]
     config["head"] = trial.suggest_int("head", head_range[0], head_range[1])
     
     print(config)
