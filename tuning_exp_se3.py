@@ -90,6 +90,8 @@ if __name__ == "__main__":
             help="Learning rate")
     parser.add_argument('--num_epochs', type=str, default=20, 
             help="Number of epochs")
+    parser.add_argument('--ntrials', type=int, default=20, 
+            help="Number of optuna trials for tuning")
 
     # Data
     parser.add_argument('--train_data_dir', type=str, default='data/SabDab/train',
@@ -115,6 +117,8 @@ if __name__ == "__main__":
             help="Path to model to restore")
     parser.add_argument('--wandb', type=str, default='Bind-Classifier', 
             help="wandb project name")
+    parser.add_argument('--entity', type=str, default='maximentropy', 
+            help="wandb account name")
 
     # Miscellaneas
     parser.add_argument('--device_ids', type=str, default="[0]", 
@@ -144,4 +148,4 @@ if __name__ == "__main__":
 
     # Optimize!!!
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=10)
+    study.optimize(objective, n_trials=FLAGS.ntrials)
