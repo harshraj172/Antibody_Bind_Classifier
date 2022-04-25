@@ -195,21 +195,24 @@ def main(FLAGS,
                               batch_size=FLAGS.batch_size, 
                               shuffle=True, 
                               collate_fn=collate, 
-                              num_workers=FLAGS.num_workers)
+                              num_workers=FLAGS.num_workers,
+                              drop_last=True)
 
     val_dataset = Antibody_Antigen_Dataset(f'{FLAGS.val_data_dir}/XAb.json', f'{FLAGS.val_data_dir}/XAg.json') 
     val_loader = DataLoader(val_dataset, 
                             batch_size=FLAGS.batch_size, 
                             shuffle=False, 
                             collate_fn=collate, 
-                            num_workers=FLAGS.num_workers)
+                            num_workers=FLAGS.num_workers,
+                            drop_last=True)
 
     test_dataset = Antibody_Antigen_Dataset(f'{FLAGS.test_data_dir}/XAb.json', f'{FLAGS.test_data_dir}/XAg.json') 
     test_loader = DataLoader(test_dataset, 
                              batch_size=FLAGS.batch_size, 
                              shuffle=False, 
                              collate_fn=collate, 
-                             num_workers=FLAGS.num_workers)
+                             num_workers=FLAGS.num_workers,
+                             drop_last=True)
 
     FLAGS.train_size = len(train_dataset)
     FLAGS.val_size = len(val_dataset)
