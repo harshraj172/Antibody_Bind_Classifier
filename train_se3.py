@@ -185,9 +185,9 @@ def main(FLAGS,
     if FLAGS.use_wandb:
         # Log all args to wandb
         if FLAGS.name:
-            wandb.init(config=config, project=f'{FLAGS.wandb}', name=f'{FLAGS.name}', entity="harsh1729")
+            wandb.init(config=config, project=f'{FLAGS.wandb}', name=f'{FLAGS.name}', entity="maximentropy")
         else:
-            wandb.init(config=config, project=f'{FLAGS.wandb}', entity="harsh1729")    
+            wandb.init(config=config, project=f'{FLAGS.wandb}', entity="maximentropy")    
     
     # Prepare data
     train_dataset = Antibody_Antigen_Dataset(f'{FLAGS.train_data_dir}/XAb.json', f'{FLAGS.train_data_dir}/XAg.json')
