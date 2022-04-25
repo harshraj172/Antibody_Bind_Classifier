@@ -1,6 +1,9 @@
 import argparse 
+import os
+import numpy as np
 from train_se3 import main
-import optuna 
+import optuna
+import torch
 
 def objective(trial):
     config = dict.fromkeys(["learning_rate", "num_layers", "num_degrees",\
@@ -8,6 +11,7 @@ def objective(trial):
     
     # device_ids(str -> list(int))
     device_ids = [int(k) for k in FLAGS.device_ids.strip('][').split(', ')]
+    print(f"Available device ids : {device_ids}")
     
     # Generate the optimizers.
     lr_range = [float(k) for k in FLAGS.lr_range.strip('][').split(', ')]
@@ -86,9 +90,9 @@ if __name__ == "__main__":
     # Meta-parameters
     parser.add_argument('--batch_size', type=int, default=1, 
             help="Batch size")
-    parser.add_argument('--lr_range', type=float, default="[1e-5, 1e-3]", 
+    parser.add_argument('--lr_range', type=str, default="[1e-5, 1e-3]", 
             help="Learning rate")
-    parser.add_argument('--num_epochs', type=str, default=20, 
+    parser.add_argument('--num_epochs', type=int, default=20, 
             help="Number of epochs")
     parser.add_argument('--ntrials', type=int, default=20, 
             help="Number of optuna trials for tuning")
@@ -132,10 +136,6 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=None)
 
     FLAGS, UNPARSED_ARGV = parser.parse_known_args()
-    
-    # Fix name
-    if not FLAGS.name:
-        FLAGS.name = f'E-d{FLAGS.num_degrees}-l{FLAGS.num_layers}-{FLAGS.num_channels}-{FLAGS.num_nlayers}'
 
     # Create model directory
     if not os.path.isdir(FLAGS.save_dir):
