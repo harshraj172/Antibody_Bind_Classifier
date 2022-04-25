@@ -29,7 +29,7 @@ class Antibody_Antigen_Dataset(Dataset):
         data_lst = []
         for x in tqdm(X):
             hchain = completize(x)
-            if hchain[0].size()[-3] > 20:
+            if hchain[0].size()[-3] > 50:
                 x_ca = np.array(hchain[0][0, :, 1, :].cpu())
                 V, E, E_idx = features(hchain[0], hchain[-1])
                 V, E, E_idx = V.cpu(), E.cpu(), E_idx.cpu()
