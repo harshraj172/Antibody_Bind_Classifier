@@ -29,8 +29,8 @@ class Antibody_Antigen_Dataset(Dataset):
         data_lst = []
         for x in tqdm(X):
             hchain = completize(x)
-            if hchain.size()[-1] == 3 and\
-               hchain.size()[-2] == 4:
+            if hchain[0].size()[-1] == 3 and\
+               hchain[0].size()[-2] == 4:
                 x_ca = np.array(hchain[0][0, :, 1, :].cpu())
                 V, E, E_idx = features(hchain[0], hchain[-1])
                 V, E, E_idx = V.cpu(), E.cpu(), E_idx.cpu()
