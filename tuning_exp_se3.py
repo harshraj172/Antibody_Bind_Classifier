@@ -84,7 +84,7 @@ if __name__ == "__main__":
             help="Low dimensional embedding fraction")
     parser.add_argument('--pool_lst', type=str, default="[avg, max]",
             help="Choose from avg or max")
-    parser.add_argument('--head_range', type=str, default="[1, 4]",
+    parser.add_argument('--head_range', type=str, default="[1, 1]",
             help="Number of attention heads")
 
     # Meta-parameters
