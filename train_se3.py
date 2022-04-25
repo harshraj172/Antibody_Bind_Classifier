@@ -40,9 +40,11 @@ def train_epoch(epoch, model, criterion, dataloader, optimizer, scheduler, devic
 
         optimizer.zero_grad()
         # run model forward and compute loss
-        pred = model(gAB, tokenAB, gAG, tokenAG)
+        # pred = model(gAB, tokenAB, gAG, tokenAG)
         # pred = data_parallel(module=model, input=(gAB, tokenAB, gAG, tokenAG),\
         #                      device_ids=device_ids)
+        model_dist = nn.DataParallel(module=model, device_ids=device_ids)
+        pred = model_dist(gAB, tokenAB, gAG, tokenAG)
 
         loss = criterion(pred, y)
         rloss += loss
@@ -88,9 +90,9 @@ def val_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
         y = y.cuda()
 
         # run model forward and compute loss
-        pred = model(gAB, tokenAB, gAG, tokenAG)
-        # pred = data_parallel(module=model, input=(gAB, tokenAB, gAG, tokenAG),\
-        #                      device_ids=device_ids)
+        model_dist = nn.DataParallel(module=model, device_ids=device_ids)
+        pred = model_dist(gAB, tokenAB, gAG, tokenAG)
+        
         loss = criterion(pred, y)
         rloss += loss
         
@@ -123,9 +125,9 @@ def test_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
         y = y.cuda()
 
         # run model forward and compute loss
-        pred = model(gAB, tokenAB, gAG, tokenAG)
-        # pred = data_parallel(module=model, input=(gAB, tokenAB, gAG, tokenAG),\
-        #                      device_ids=device_ids)
+        model_dist = nn.DataParallel(module=model, device_ids=device_ids)
+        pred = model_dist(gAB, tokenAB, gAG, tokenAG)
+        
         loss = criterion(pred, y)
         rloss += loss
         
