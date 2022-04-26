@@ -234,7 +234,7 @@ def main(FLAGS,
         model.load_state_dict(torch.load(FLAGS.restore))
 
     if len(device_ids) > 1:
-        model = nn.DataParallel(model)
+        model = nn.DataParallel(model, device_ids=device_ids)
     model = model.to(device)
     #wandb.watch(model)
 
