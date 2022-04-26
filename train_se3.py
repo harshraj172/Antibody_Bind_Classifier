@@ -21,6 +21,8 @@ import models as models
 from models import *
 from glob_utils import *
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 def to_np(x):
     return x.cpu().detach().numpy()
 
@@ -32,19 +34,15 @@ def train_epoch(epoch, model, criterion, dataloader, optimizer, scheduler, devic
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
-        tokenAB = tokenAB.to("cuda: 0")
-        tokenAG = tokenAG.to("cuda: 0")
-        gAB = gAB.to("cuda: 0")
-        gAG = gAG.to("cuda: 0")
-        y = y.to("cuda: 0")
+        tokenAB = tokenAB.to(device)
+        tokenAG = tokenAG.to(device)
+        gAB = gAB.to(device)
+        gAG = gAG.to(device)
+        y = y.to(device)
 
         optimizer.zero_grad()
         # run model forward and compute loss
-        # pred = model(gAB, tokenAB, gAG, tokenAG)
-        # pred = data_parallel(module=model, input=(gAB, tokenAB, gAG, tokenAG),\
-        #                      device_ids=device_ids)
-        model_dist = nn.DataParallel(module=model, device_ids=device_ids)
-        pred = model_dist(gAB, tokenAB, gAG, tokenAG)
+        pred = model(gAB, tokenAB, gAG, tokenAG)
 
         loss = criterion(pred, y)
         rloss += loss
@@ -83,15 +81,14 @@ def val_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
-        tokenAB = tokenAB.to("cuda: 0")
-        tokenAG = tokenAG.to("cuda: 0")
-        gAB = gAB.to("cuda: 0")
-        gAG = gAG.to("cuda: 0")
-        y = y.to("cuda: 0")
+        tokenAB = tokenAB.to(device)
+        tokenAG = tokenAG.to(device)
+        gAB = gAB.to(device)
+        gAG = gAG.to(device)
+        y = y.to(device)
 
         # run model forward and compute loss
-        model_dist = nn.DataParallel(module=model, device_ids=device_ids)
-        pred = model_dist(gAB, tokenAB, gAG, tokenAG)
+        pred = model(gAB, tokenAB, gAG, tokenAG)
         
         loss = criterion(pred, y)
         rloss += loss
@@ -118,15 +115,14 @@ def test_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
     Y_true, Y_pred = torch.tensor([]), torch.tensor([])
     for i, (gAB, seqAB, gAG, seqAG, y) in enumerate(dataloader):
         tokenAB, tokenAG = tokenize(seqAB), tokenize(seqAG)
-        tokenAB = tokenAB.to("cuda: 0")
-        tokenAG = tokenAG.to("cuda: 0")
-        gAB = gAB.to("cuda: 0")
-        gAG = gAG.to("cuda: 0")
-        y = y.to("cuda: 0")
+        tokenAB = tokenAB.to(device)
+        tokenAG = tokenAG.to(device)
+        gAB = gAB.to(device)
+        gAG = gAG.to(device)
+        y = y.to(device)
 
         # run model forward and compute loss
-        model_dist = nn.DataParallel(module=model, device_ids=device_ids)
-        pred = model_dist(gAB, tokenAB, gAG, tokenAG)
+        pred = model(gAB, tokenAB, gAG, tokenAG)
         
         loss = criterion(pred, y)
         rloss += loss
@@ -236,7 +232,10 @@ def main(FLAGS,
 
     if FLAGS.restore is not None:
         model.load_state_dict(torch.load(FLAGS.restore))
-    model = model.to("cuda: 0")
+
+    if len(device_ids) > 1:
+        model = nn.DataParallel(model)
+    model = model.to(device)
     #wandb.watch(model)
 
     # Optimizer settings
