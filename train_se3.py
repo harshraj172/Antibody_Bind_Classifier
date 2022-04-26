@@ -86,9 +86,10 @@ def val_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
         gAB = gAB.to(device)
         gAG = gAG.to(device)
         y = y.to(device)
-
-        # run model forward and compute loss
-        pred = model(gAB, tokenAB, gAG, tokenAG)
+        
+        with torch.no_grad():
+            # run model forward and compute loss
+            pred = model(gAB, tokenAB, gAG, tokenAG)
         
         loss = criterion(pred, y)
         rloss += loss
@@ -121,8 +122,9 @@ def test_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
         gAG = gAG.to(device)
         y = y.to(device)
 
-        # run model forward and compute loss
-        pred = model(gAB, tokenAB, gAG, tokenAG)
+        with torch.no_grad():
+            # run model forward and compute loss
+            pred = model(gAB, tokenAB, gAG, tokenAG)
         
         loss = criterion(pred, y)
         rloss += loss
