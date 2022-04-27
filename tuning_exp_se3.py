@@ -74,7 +74,7 @@ if __name__ == "__main__":
             help="Number of equivariant layers") #4
     parser.add_argument('--ndegrees_range', type=str, default="[4, 4]",
             help="Number of irreps {0,1,...,num_degrees-1}") #4
-    parser.add_argument('--nchannels_range', type=str, default="[8, 16]",
+    parser.add_argument('--nchannels_range', type=str, default="[8, 14]",
             help="Number of channels in middle layers") #16
     parser.add_argument('--nnlayers_range', type=str, default="[1, 2]",
             help="Number of layers for nonlinearity")
