@@ -92,7 +92,7 @@ if __name__ == "__main__":
             help="Batch size")
     parser.add_argument('--lr_range', type=str, default="[1e-5, 1e-3]", 
             help="Learning rate")
-    parser.add_argument('--num_epochs', type=int, default=20, 
+    parser.add_argument('--num_epochs', type=int, default=100, 
             help="Number of epochs")
     parser.add_argument('--ntrials', type=int, default=20, 
             help="Number of optuna trials for tuning")
