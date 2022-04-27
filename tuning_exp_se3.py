@@ -70,17 +70,17 @@ if __name__ == "__main__":
     parser.add_argument('--pretrained_lm_dim', type=int, default=1024,
             help="Pretrained LM model out dim")
     
-    parser.add_argument('--nlayers_range', type=str, default="[2, 6]",
+    parser.add_argument('--nlayers_range', type=str, default="[4, 4]",
             help="Number of equivariant layers") #4
-    parser.add_argument('--ndegrees_range', type=str, default="[2, 6]",
+    parser.add_argument('--ndegrees_range', type=str, default="[4, 4]",
             help="Number of irreps {0,1,...,num_degrees-1}") #4
     parser.add_argument('--nchannels_range', type=str, default="[8, 16]",
             help="Number of channels in middle layers") #16
-    parser.add_argument('--nnlayers_range', type=str, default="[1, 4]",
+    parser.add_argument('--nnlayers_range', type=str, default="[1, 2]",
             help="Number of layers for nonlinearity")
     parser.add_argument('--fully_connected', action='store_true',
             help="Include global node in graph")
-    parser.add_argument('--div_range', type=str, default="[2, 4]",
+    parser.add_argument('--div_range', type=str, default="[4, 4]",
             help="Low dimensional embedding fraction")
     parser.add_argument('--pool_lst', type=str, default="[avg, max]",
             help="Choose from avg or max")
