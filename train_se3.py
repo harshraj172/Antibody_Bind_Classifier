@@ -39,11 +39,11 @@ def train_epoch(epoch, model, criterion, dataloader, optimizer, scheduler, devic
         gAB = gAB.to(device)
         gAG = gAG.to(device)
         y = y.to(device)
-
+        
         optimizer.zero_grad()
         # run model forward and compute loss
         pred = model(gAB, tokenAB, gAG, tokenAG)
-
+        
         loss = criterion(pred, y)
         rloss += loss
         
@@ -63,6 +63,7 @@ def train_epoch(epoch, model, criterion, dataloader, optimizer, scheduler, devic
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
         Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
+        torch.cuda.empty_cache()
     rloss /= FLAGS.train_size
     results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
@@ -97,6 +98,7 @@ def val_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
         Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
+        torch.cuda.empty_cache()
     rloss /= FLAGS.val_size
     results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
@@ -132,6 +134,7 @@ def test_epoch(epoch, model, criterion, dataloader, device_ids, FLAGS):
         # for evaluation
         Y_true = torch.cat((Y_true.to('cpu'), y.to('cpu')))
         Y_pred = torch.cat((Y_pred.to('cpu'), pred.to('cpu')))
+        torch.cuda.empty_cache()
     rloss /= FLAGS.test_size
     results_df = metric(Y_true.reshape(-1), Y_pred.reshape(-1))
     
